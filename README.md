@@ -1,4 +1,4 @@
-# OpenHub (DevSuite Hub)
+# OpenHub — By SrMaxi
 
 Aplicación de escritorio **Windows 10/11**, que integra un visor Markdown/PDF, un estudio de texto a voz y mapas mentales interactivos. Todo el trabajo y los recursos funcionan offline; solo buscar o descargar actualizaciones requiere internet. Construida con **Tauri v2, Rust, React 18, TypeScript, Tailwind CSS, Radix UI y Zustand**.
 
@@ -9,7 +9,7 @@ Aplicación de escritorio **Windows 10/11**, que integra un visor Markdown/PDF, 
 - **Voz:** Web Speech API / voces SAPI disponibles en WebView2; velocidad, tono, volumen, lectura de selección, párrafos, progreso, resaltado y auto-scroll.
 - **Mapas:** CodeMirror 6 + Markmap, zoom, pan, colapso, modo foco, plantillas y exportación MD/SVG/HTML/PNG/PDF mediante impresión.
 - **Pomodoro compartido:** trabajo/descanso configurables, pausa, salto, reinicio, estadísticas y alarma local diferente al terminar enfoque o descanso. Panel flotante accesible sobre Visor, TTS y Mapas.
-- **Productividad:** paleta `Ctrl+K`, barra superior ocultable con `Ctrl+Shift+H`, índice Markdown navegable, búsqueda PDF con atajos y búsqueda/centrado de temas Markmap.
+- **Productividad:** pantalla completa nativa/web con botón y `F11`, creación de textos y apertura de archivos desde Recientes, paleta `Ctrl+K`, barra superior ocultable con `Ctrl+Shift+H`, índice Markdown, búsqueda PDF y búsqueda/centrado de temas Markmap.
 - **Lectura accesible:** tamaño, interlineado y ancho configurables; pronunciación TTS personalizada sin alterar el texto ni perder su resaltado.
 - **Respaldo local:** exportación/restauración JSON versionada y validada de preferencias, pronunciaciones y recientes.
 - **Actualizaciones firmadas:** aviso al iniciar, descarga con progreso, instalación con aceptación y reinicio mediante GitHub Releases. [Configuración](docs/ACTUALIZACIONES.md).
@@ -25,7 +25,7 @@ Las siguientes imágenes son capturas directas del **build de producción ejecut
 
 Capturas individuales a 1440 × 900 px: [Inicio](docs/screenshots/01-inicio.png) · [Visor Markdown](docs/screenshots/02-visor-markdown.png) · [Estudio TTS](docs/screenshots/03-estudio-tts.png) · [Mapas mentales](docs/screenshots/04-mapas-mentales.png) · [Ajustes](docs/screenshots/05-ajustes.png) · [Modo oscuro](docs/screenshots/06-mapa-modo-oscuro.png).
 
-**Nuevas mejoras verificadas:** [Paleta de comandos](docs/screenshots/mejoras/07-paleta-comandos.png) · [Índice de lectura](docs/screenshots/mejoras/08-indice-lectura.png) · [Búsqueda PDF en página 2](docs/screenshots/mejoras/09-busqueda-pdf.png) · [Búsqueda Markmap](docs/screenshots/mejoras/10-busqueda-markmap.png) · [Pronunciación y accesibilidad](docs/screenshots/mejoras/11-pronunciacion-ajustes.png) · [Barra superior oculta](docs/screenshots/mejoras/12-barra-superior-oculta.png) · [Leer selección](docs/screenshots/mejoras/13-leer-seleccion.png) · [Actualización disponible](docs/screenshots/mejoras/14-actualizacion-disponible.png) · [Pomodoro superpuesto](docs/screenshots/mejoras/15-pomodoro-superpuesto.png).
+**Nuevas mejoras verificadas:** [Paleta de comandos](docs/screenshots/mejoras/07-paleta-comandos.png) · [Índice de lectura](docs/screenshots/mejoras/08-indice-lectura.png) · [Búsqueda PDF en página 2](docs/screenshots/mejoras/09-busqueda-pdf.png) · [Búsqueda Markmap](docs/screenshots/mejoras/10-busqueda-markmap.png) · [Pronunciación y accesibilidad](docs/screenshots/mejoras/11-pronunciacion-ajustes.png) · [Barra superior oculta](docs/screenshots/mejoras/12-barra-superior-oculta.png) · [Leer selección](docs/screenshots/mejoras/13-leer-seleccion.png) · [Actualización disponible](docs/screenshots/mejoras/14-actualizacion-disponible.png) · [Pomodoro superpuesto](docs/screenshots/mejoras/15-pomodoro-superpuesto.png) · [Acciones en Recientes](docs/screenshots/mejoras/16-recientes-acciones.png) · [Pantalla completa](docs/screenshots/mejoras/17-pantalla-completa.png).
 
 ### Cómo escuchar solo una selección
 
@@ -66,8 +66,8 @@ La verificación E2E opcional y reproducible de las nuevas funciones está docum
 Instaladores generados:
 
 ```text
-src-tauri/target/release/bundle/nsis/OpenHub_1.0.0_x64-setup.exe
-src-tauri/target/release/bundle/msi/OpenHub_1.0.0_x64_en-US.msi
+src-tauri/target/release/bundle/nsis/OpenHub_1.0.5_x64-setup.exe
+src-tauri/target/release/bundle/msi/OpenHub_1.0.5_x64_en-US.msi
 ```
 
 > Los nombres pueden variar según la arquitectura y el idioma del bundle.
@@ -79,7 +79,7 @@ src-tauri/target/release/bundle/msi/OpenHub_1.0.0_x64_en-US.msi
    ```powershell
    git init
    git add .
-   git commit -m "OpenHub 1.0.0"
+   git commit -m "OpenHub 1.0.5"
    git branch -M main
    git remote add origin https://github.com/USUARIO/REPOSITORIO.git
    git push -u origin main

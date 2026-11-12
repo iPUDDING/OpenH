@@ -30,6 +30,7 @@
 | Backup/restauración | JSON versionado, exportación nativa/descarga y límite de importación de 5 MB. | E2E descarga y valida JSON; pruebas de esquema, límites, recientes y reglas. |
 | Pomodoro superpuesto y alarmas | Portal a `document.body`, posición adaptada al viewport, cierre al ocultarse su herramienta y Web Audio local con melodías distintas para enfoque/descanso. | E2E pulsa los controles en Visor/TTS/Mapas, comprueba el elemento superior y recorre ambos vencimientos; AudioContext se simula solo en QA para inspeccionar las notas. |
 | Robustez de texto y datos | Rangos Unicode exactos, borradores vacíos, backups parciales no destructivos, nombres seguros para Windows y versión tolerante a metadatos incompletos en CI. | 22 pruebas unitarias, incluidos coreano, acentos descompuestos, emojis, dispositivos reservados y `package.json` sin `version`. |
+| Recientes y pantalla completa | Acciones laterales para texto/archivo, nombres únicos y `useFullscreen` con Tauri/Fullscreen API, `F11` y permisos nativos mínimos. Identidad `By SrMaxi` y versión base 1.0.5 sincronizadas. | 9 comprobaciones E2E de identidad, creación, recuperación, apertura, botón, atajo e IPC nativo. |
 
 ## Decisiones deliberadas
 
@@ -67,8 +68,9 @@ node verify-improvements.mjs
 node verify-usability.mjs
 node verify-updater.mjs
 node verify-pomodoro.mjs
+node verify-navigation.mjs
 ```
 
-El primer script crea un PDF real de dos páginas, lo carga mediante el input de archivos y verifica las funciones generales. El segundo comprueba selección TTS, edición durante reproducción, Pomodoro y barra superior; solo dentro de ese navegador de QA sustituye Web Speech por un doble que permite inspeccionar el texto enviado. El tercero valida el diálogo y el IPC del actualizador mediante otro doble aislado, sin instalar software. El cuarto comprueba que los controles Pomodoro reciben clics en las tres herramientas y recorre vencimientos breves reales; sustituye `AudioContext` únicamente en QA para registrar las notas programadas, no para simular los cambios de sesión. Los cuatro imprimen `errors: []`; las capturas auténticas se guardan en `docs/screenshots/mejoras/`. En Linux se pueden instalar las bibliotecas de Chromium con `npx playwright install-deps chromium`.
+El primer script crea un PDF real de dos páginas, lo carga mediante el input de archivos y verifica las funciones generales. El segundo comprueba selección TTS, edición durante reproducción, Pomodoro y barra superior; solo dentro de ese navegador de QA sustituye Web Speech por un doble que permite inspeccionar el texto enviado. El tercero valida el diálogo y el IPC del actualizador mediante otro doble aislado, sin instalar software. El cuarto comprueba que los controles Pomodoro reciben clics en las tres herramientas y recorre vencimientos breves reales; sustituye `AudioContext` únicamente en QA para registrar las notas programadas, no para simular los cambios de sesión. El quinto crea/recupera borradores, abre archivos desde Recientes y comprueba pantalla completa web y los comandos IPC nativos. Los cinco imprimen `errors: []`; las capturas auténticas se guardan en `docs/screenshots/mejoras/`. En Linux se pueden instalar las bibliotecas de Chromium con `npx playwright install-deps chromium`.
 
 No se utilizan mockups, imágenes generadas por IA ni datos pintados para simular resultados.

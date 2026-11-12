@@ -1,4 +1,4 @@
-# Informe de verificación — OpenHub 1.0.0
+# Informe de verificación — OpenHub 1.0.5
 
 **Fecha:** 11 de noviembre de 2026.
 
@@ -8,14 +8,15 @@
 |---|---|
 | `npm run typecheck` | Correcto, sin errores TypeScript. |
 | `npm test` | 6 archivos; **22/22 pruebas unitarias** superadas. |
-| `npm run build` | Build Vite de producción correcto; **2413 módulos** transformados. |
+| `npm run build` | Build Vite de producción correcto; **2414 módulos** transformados. |
 | `npm audit --omit=dev --audit-level=low` | **0 vulnerabilidades** en dependencias de producción. |
 | `node verify-improvements.mjs` | **7 comprobaciones** funcionales superadas; **`errors: []`**. |
 | `node verify-usability.mjs` | **14 comprobaciones** de usabilidad superadas; **`errors: []`**. |
 | `node verify-updater.mjs` | **8 comprobaciones** del actualizador superadas; **`errors: []`**. |
 | `node verify-pomodoro.mjs` | **6 comprobaciones** de apilamiento, clics y alarmas superadas; **`errors: []`**. |
+| `node verify-navigation.mjs` | **9 comprobaciones** de identidad, Recientes y pantalla completa superadas; **`errors: []`**. |
 
-Total de navegador: **35/35 comprobaciones** sobre el frontend de producción servido en el puerto 1420 mediante Chromium/Playwright. No se modifica la interfaz distribuida para aparentar resultados.
+Total de navegador: **44/44 comprobaciones** sobre el frontend de producción servido en el puerto 1420 mediante Chromium/Playwright. No se modifica la interfaz distribuida para aparentar resultados.
 
 ## E2E general
 
@@ -48,7 +49,13 @@ Total de navegador: **35/35 comprobaciones** sobre el frontend de producción se
 
 Para recorrer los vencimientos sin esperar 30 minutos, la prueba configura sesiones de 1,2 segundos en el almacenamiento del navegador aislado. El temporizador real termina enfoque y descanso, cambia de modo y actualiza las estadísticas. Se sustituye `AudioContext` **solo en QA** para registrar las frecuencias programadas: `[880, 660, 880]` al terminar enfoque y `[523.25, 659.25, 523.25]` al terminar descanso. Esto valida la lógica y la programación de audio; la salida audible física y las políticas concretas de WebView2 deben comprobarse en Windows.
 
-Capturas finales: `docs/screenshots/mejoras/07-…` hasta `15-…`.
+## E2E de Recientes y pantalla completa
+
+`verify-navigation.mjs` crea dos borradores con nombres únicos, comprueba que el segundo no sobrescribe el primero, recupera su contenido desde Recientes y abre un Markdown real mediante el selector de archivos. Después entra y sale de pantalla completa con el botón y con `F11`.
+
+En una segunda página aislada simula únicamente el IPC de Tauri para comprobar `isFullscreen`, `setFullscreen(true/false)` y la sincronización cuando la ventana cambia externamente. La versión web utiliza la Fullscreen API real de Chromium, no un doble.
+
+Capturas finales: `docs/screenshots/mejoras/07-…` hasta `17-…`.
 
 ## Errores corregidos en esta ronda
 
@@ -62,6 +69,8 @@ Capturas finales: `docs/screenshots/mejoras/07-…` hasta `15-…`.
 - Se endurecieron nombres reservados de Windows, progreso no finito, índice activo, Pomodoro, paleta y foco del actualizador.
 - Restaurar una copia cancela cualquier voz activa antes de reemplazar el estado.
 - La compilación dentro de `tauri-action` podía recibir un `package.json` sin `version`; `useAppVersion` ahora tolera metadatos incompletos y conserva `getVersion()` como fuente real en Windows. Se verificó `npm run build` con la propiedad eliminada temporalmente y se restauró el archivo después.
+- Recientes permite crear borradores únicos y abrir archivos sin salir de la barra lateral; el editor recupera correctamente el contenido seleccionado.
+- Pantalla completa funciona con botón y `F11`, con permisos nativos explícitos, fallback web y sincronización de estado.
 
 ## Alcance y límites
 

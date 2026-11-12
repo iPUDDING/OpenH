@@ -103,13 +103,22 @@ export default function DocumentViewer() {
   useEffect(() => {
     const onOpen = () => { setActiveTool('viewer'); void openDialog(); };
     const onRecent = (event: Event) => void openRecent((event as CustomEvent<RecentDocument>).detail);
+    const onNewDocument = (event: Event) => {
+      const requestedName = (event as CustomEvent<{ name?: string }>).detail?.name?.trim();
+      setActiveTool('viewer');
+      loadDocument({ name: requestedName || 'Texto sin título.md', kind: 'markdown', text: '' });
+      setMode('split');
+      window.requestAnimationFrame(() => sectionRef.current?.querySelector<HTMLTextAreaElement>('textarea[aria-label="Editor Markdown"]')?.focus());
+    };
     window.addEventListener('openhub:open', onOpen);
     window.addEventListener('openhub:recent', onRecent);
+    window.addEventListener('openhub:new-document', onNewDocument);
     return () => {
       window.removeEventListener('openhub:open', onOpen);
       window.removeEventListener('openhub:recent', onRecent);
+      window.removeEventListener('openhub:new-document', onNewDocument);
     };
-  }, [openDialog, openRecent, setActiveTool]);
+  }, [loadDocument, openDialog, openRecent, setActiveTool, setMode]);
 
   useEffect(() => {
     if (!isTauri()) return;

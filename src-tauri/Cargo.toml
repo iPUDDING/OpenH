@@ -1,6 +1,6 @@
 [package]
 name = "openhub"
-version = "1.0.0"
+version = "1.0.5"
 description = "Hub offline de lectura, TTS y mapas mentales"
 authors = ["OpenHub"]
 edition = "2021"

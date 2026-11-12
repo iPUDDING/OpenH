@@ -1,4 +1,4 @@
-import { AudioLines, BrainCircuit, Clock3, FileText, Settings, Trash2, X } from 'lucide-react';
+import { AudioLines, BrainCircuit, Clock3, FilePlus2, FileText, FolderOpen, Settings, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Hint } from '@/components/ui/Tooltip';
 import { useAppStore } from '@/store/useAppStore';
@@ -20,6 +20,13 @@ export function Sidebar({ open, headerHidden = false }: { open: boolean; headerH
 
   const select = (id: ToolId) => setActive(id);
   const openRecent = (recent: RecentDocument) => window.dispatchEvent(new CustomEvent('openhub:recent', { detail: recent }));
+  const createText = () => {
+    const names = new Set(recents.map((recent) => recent.name.toLocaleLowerCase()));
+    let index = 1;
+    while (names.has(`texto ${index}.md`)) index += 1;
+    window.dispatchEvent(new CustomEvent('openhub:new-document', { detail: { name: `Texto ${index}.md` } }));
+  };
+  const openFile = () => window.dispatchEvent(new CustomEvent('openhub:open'));
 
   return (
     <aside className={cn('z-30 flex shrink-0 flex-col border-r bg-card transition-[width] duration-200 max-lg:absolute max-lg:bottom-0 max-lg:left-0 max-lg:shadow-xl', headerHidden ? 'max-lg:top-0' : 'max-lg:top-14', open ? 'w-60' : 'w-16 max-lg:w-0 max-lg:overflow-hidden')} aria-label="Navegación principal">
@@ -43,6 +50,10 @@ export function Sidebar({ open, headerHidden = false }: { open: boolean; headerH
       {open && (
         <div className="flex min-h-0 flex-1 flex-col border-t pt-3">
           <div className="mb-2 flex items-center gap-2 px-4 text-xs font-semibold text-muted-foreground"><Clock3 className="h-3.5 w-3.5" />RECIENTES</div>
+          <div className="grid grid-cols-2 gap-1.5 px-2 pb-3">
+            <Button variant="outline" size="sm" className="min-w-0 gap-1.5 px-2 text-[11px]" onClick={createText} aria-label="Crear texto nuevo"><FilePlus2 className="h-3.5 w-3.5" />Nuevo texto</Button>
+            <Button variant="outline" size="sm" className="min-w-0 gap-1.5 px-2 text-[11px]" onClick={openFile} aria-label="Abrir archivo desde Recientes"><FolderOpen className="h-3.5 w-3.5" />Abrir archivo</Button>
+          </div>
           <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-3">
             {recents.length ? recents.map((recent) => (
               <div key={recent.id} className="group flex items-center rounded-md hover:bg-accent">
@@ -52,7 +63,7 @@ export function Sidebar({ open, headerHidden = false }: { open: boolean; headerH
                 </button>
                 <button className="mr-1 flex rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-destructive focus:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100" onClick={() => removeRecent(recent.id)} aria-label={`Quitar ${recent.name} de recientes`}><X className="h-3 w-3" /></button>
               </div>
-            )) : <p className="px-3 py-5 text-center text-xs leading-5 text-muted-foreground">Los documentos que abras aparecerán aquí.</p>}
+            )) : <p className="px-3 py-5 text-center text-xs leading-5 text-muted-foreground">Crea un texto o abre un archivo para verlo aquí.</p>}
           </div>
         </div>
       )}

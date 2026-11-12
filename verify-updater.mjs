@@ -29,7 +29,7 @@ await page.addInitScript(() => {
     },
     unregisterCallback(id) { callbacks.delete(id); },
     invoke: async (command, args = {}) => {
-      if (command === 'plugin:app|version') return '1.0.0';
+      if (command === 'plugin:app|version') return '1.0.5';
       if (command === 'plugin:event|listen') return 1;
       if (command === 'plugin:updater|check') {
         if (window.__qaCheckError) throw new Error('Red de QA no disponible');

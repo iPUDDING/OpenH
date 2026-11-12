@@ -86,6 +86,19 @@ assert.equal(await page.evaluate(() => window.__spoken[3]), editorSelection);
 checks.push('Leer selección también admite texto del editor Markdown');
 await page.getByRole('button', { name: 'Detener lectura', exact: true }).click();
 await page.getByRole('button', { name: 'Cerrar', exact: true }).click();
+
+await page.getByRole('button', { name: 'Leer', exact: true }).click();
+await page.waitForFunction(() => window.__spoken.length === 5);
+await page.getByLabel('Editor Markdown', { exact: true }).fill('# Texto actualizado\n\nEsta versión nueva debe detener la voz anterior.');
+await page.getByRole('button', { name: 'Leer', exact: true }).waitFor();
+await page.getByRole('button', { name: 'Leer', exact: true }).click();
+await page.waitForFunction(() => window.__spoken.length === 6);
+assert.equal(await page.evaluate(() => window.__spoken[5]), 'Texto actualizado');
+await page.evaluate(() => window.__utterances.at(-1).onend());
+await page.waitForFunction(() => window.__spoken.length === 7);
+assert.equal(await page.evaluate(() => window.__spoken[6]), 'Esta versión nueva debe detener la voz anterior.');
+checks.push('Editar la fuente detiene la voz antigua y la siguiente lectura usa el texto nuevo');
+await page.getByRole('button', { name: 'Detener lectura', exact: true }).click();
 await page.getByRole('button', { name: 'Vista previa', exact: true }).click();
 
 await page.getByRole('button', { name: /Pomodoro:/ }).click();
@@ -100,7 +113,13 @@ checks.push('Pausar Pomodoro conserva el tiempo restante');
 await page.getByRole('button', { name: 'Siguiente sesión', exact: true }).click();
 await page.getByText('0 sesiones completadas', { exact: true }).waitFor();
 checks.push('Saltar una sesión no incrementa las completadas');
-await page.getByRole('button', { name: 'Cerrar Pomodoro', exact: true }).click();
+await page.keyboard.press('Escape');
+assert.equal(await page.locator('section[aria-label="Temporizador Pomodoro"]').count(), 0);
+checks.push('Escape cierra el Pomodoro y devuelve el foco a su botón');
+await page.getByRole('button', { name: /Pomodoro:/ }).click();
+await page.getByRole('heading', { name: 'Texto actualizado' }).click();
+assert.equal(await page.locator('section[aria-label="Temporizador Pomodoro"]').count(), 0);
+checks.push('Hacer clic fuera cierra el Pomodoro');
 
 const main = page.locator('main');
 const initialHeight = (await main.boundingBox()).height;

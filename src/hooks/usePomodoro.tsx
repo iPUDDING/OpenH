@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAppStore } from '@/store/useAppStore';
+import { playPomodoroAlarm, primePomodoroAlarm } from '@/lib/pomodoroAlarm';
 
 export type PomodoroMode = 'work' | 'break';
 
@@ -52,7 +53,10 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((endAtRef.current - Date.now()) / 1000));
       setSecondsLeft(remaining);
-      if (remaining <= 0) switchMode(mode, true);
+      if (remaining <= 0) {
+        void playPomodoroAlarm(mode);
+        switchMode(mode, true);
+      }
     };
     tick();
     const interval = window.setInterval(tick, 250);
@@ -60,6 +64,7 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
   }, [mode, running, switchMode]);
 
   const start = useCallback(() => {
+    void primePomodoroAlarm();
     endAtRef.current = Date.now() + secondsLeft * 1000;
     setRunning(true);
   }, [secondsLeft]);

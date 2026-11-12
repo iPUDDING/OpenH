@@ -23,9 +23,12 @@ MEJORAS VERIFICADAS (carpeta mejoras/)
 11-pronunciacion-ajustes.png  Lectura accesible y regla de pronunciación TTS.
 12-barra-superior-oculta.png   Área ampliada y botón para recuperar la barra.
 13-leer-seleccion.png         Texto seleccionado y contador en Leer selección.
+14-actualizacion-disponible.png Cartel de nueva versión, notas y aceptación.
+15-pomodoro-superpuesto.png  Panel por delante del mapa y controles accesibles.
 
-Las capturas 07–11 se generan con verify-improvements.mjs y las capturas 12–13
-con verify-usability.mjs. Ambos E2E terminaron con errors: [].
+Las capturas 07–11 se generan con verify-improvements.mjs, las capturas 12–13
+con verify-usability.mjs, la 14 con verify-updater.mjs y la 15 con
+verify-pomodoro.mjs. Los cuatro E2E terminaron con errors: [].
 
 El ejecutable Windows utiliza este mismo frontend dentro de Microsoft
 WebView2. La barra de título de Windows, los diálogos de archivos, la ventana

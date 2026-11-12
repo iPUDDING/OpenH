@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { BookOpenCheck, Database, Download, Keyboard, Monitor, Moon, Plus, RotateCcw, ShieldCheck, Sun, Trash2, Upload, X } from 'lucide-react';
+import { BookOpenCheck, Database, Download, Keyboard, Monitor, Moon, Plus, RefreshCw, RotateCcw, ShieldCheck, Sun, Trash2, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { useAppStore } from '@/store/useAppStore';
+import { useAppVersion } from '@/hooks/useAppVersion';
 import { usePomodoro } from '@/hooks/usePomodoro';
 import { cn } from '@/lib/utils';
 import { createWorkspaceBackup, parseWorkspaceBackup } from '@/lib/workspace';
-import { importWorkspaceDialog, saveBinaryFile } from '@/services/fileSystemService';
+import { cancelSpeech } from '@/services/ttsService';
+import { importWorkspaceDialog, isTauri, saveBinaryFile } from '@/services/fileSystemService';
 
 export default function SettingsView() {
   const theme = useAppStore((state) => state.theme);
@@ -26,6 +28,8 @@ export default function SettingsView() {
   const recents = useAppStore((state) => state.recents);
   const clearRecents = useAppStore((state) => state.clearRecents);
   const timer = usePomodoro();
+  const version = useAppVersion();
+  const desktop = isTauri();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [backupMessage, setBackupMessage] = useState<string | null>(null);
@@ -52,6 +56,7 @@ export default function SettingsView() {
       if (!json) return;
       const data = parseWorkspaceBackup(json);
       if (!window.confirm('Se reemplazarán los borradores y preferencias actuales por el contenido de la copia. ¿Continuar?')) return;
+      cancelSpeech('settings-restore');
       useAppStore.setState(data);
       setBackupMessage('Copia restaurada. Los cambios ya están aplicados.');
     } catch (error) { setBackupMessage(error instanceof Error ? error.message : 'No se pudo restaurar la copia.'); }
@@ -102,6 +107,10 @@ export default function SettingsView() {
             <SettingRow title="Estadísticas de esta ejecución" description={`${timer.completedSessions} sesiones de trabajo completadas.`}><Button variant="outline" size="sm" onClick={timer.resetStats}><RotateCcw className="h-4 w-4" />Reiniciar</Button></SettingRow>
           </SettingsCard>
 
+          <SettingsCard title="Actualizaciones" description={`Versión instalada: ${version}. Las descargas se verifican mediante firma antes de instalarse.`}>
+            <SettingRow title="Buscar una nueva versión" description={desktop ? 'La comprobación usa internet solo al buscar o descargar. OpenHub sigue funcionando sin conexión.' : 'La actualización automática está disponible en la aplicación de escritorio para Windows.'}><Button variant="outline" size="sm" disabled={!desktop} onClick={() => window.dispatchEvent(new CustomEvent('openhub:check-updates'))}><RefreshCw className="h-4 w-4" />Buscar actualizaciones</Button></SettingRow>
+          </SettingsCard>
+
           <SettingsCard title="Privacidad y almacenamiento" description="Sin cuentas, analítica ni sincronización externa.">
             <div className="flex items-start gap-3 rounded-lg bg-emerald-500/5 p-3 text-sm"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" /><div><p className="font-medium">Tus documentos permanecen en tu equipo</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Estado y preferencias: WebView2 / localStorage.<br />Datos de aplicación: %APPDATA%\com.openhub.app\</p></div></div>
             <SettingRow title="Historial de recientes" description={`${recents.length} elementos guardados. Limpiar no elimina archivos del disco.`}><Button variant="outline" size="sm" disabled={!recents.length} onClick={() => { if (window.confirm('¿Limpiar todo el historial de recientes?')) clearRecents(); }}><Trash2 className="h-4 w-4" />Limpiar</Button></SettingRow>
@@ -119,7 +128,7 @@ export default function SettingsView() {
             </div>
           </SettingsCard>
 
-          <div className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground"><Database className="h-3.5 w-3.5" />OpenHub 1.0.0 · Tauri v2 + React 18</div>
+          <div className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground"><Database className="h-3.5 w-3.5" />OpenHub {version} · Tauri v2 + React 18</div>
         </div>
       </div>
     </section>

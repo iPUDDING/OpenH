@@ -4,6 +4,13 @@ src-tauri/target/
 src-tauri/gen/
 *.local
 *.log
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.pfx
+*.p12
 .DS_Store
 Thumbs.db
 coverage/

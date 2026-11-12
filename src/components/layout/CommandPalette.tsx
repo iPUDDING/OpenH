@@ -107,6 +107,7 @@ export function CommandPalette({ open, onClose, onToggleSidebar, onToggleHeader 
             placeholder="Busca herramientas, comandos o documentos…"
             aria-label="Buscar comandos"
             aria-controls="command-results"
+            aria-activedescendant={filtered[selected] ? `command-option-${selected}` : undefined}
           />
           <kbd className="rounded border bg-muted px-2 py-1 text-[10px] text-muted-foreground">ESC</kbd>
         </div>
@@ -117,6 +118,7 @@ export function CommandPalette({ open, onClose, onToggleSidebar, onToggleHeader 
               <button
                 key={command.id}
                 data-command-index={index}
+                id={`command-option-${index}`}
                 role="option"
                 aria-selected={selected === index}
                 onMouseEnter={() => setSelected(index)}

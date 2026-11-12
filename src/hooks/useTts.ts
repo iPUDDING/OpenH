@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { countWords, estimateSeconds, extractWordRanges, findWordAt } from '@/lib/text';
 import { cancelSpeech, createUtterance, loadVoices, speechSupported } from '@/services/ttsService';
@@ -66,7 +66,9 @@ export function useTts(segments: SpeechSegment[]): TtsController {
   const resetLocal = useCallback(() => {
     tokenRef.current += 1;
     pausedRef.current = false;
+    receivedBoundaryRef.current = false;
     clearFallback();
+    fallbackContextRef.current = null;
     setStatus('idle');
     setProgress(0);
     setError(null);
@@ -110,6 +112,8 @@ export function useTts(segments: SpeechSegment[]): TtsController {
     pausedRef.current = false;
     activeSegmentsRef.current = source;
     clearFallback();
+    fallbackContextRef.current = null;
+    updatePosition(null);
     cancelSpeech(instanceIdRef.current);
     setError(null);
     setStatus('loading');
@@ -201,10 +205,18 @@ export function useTts(segments: SpeechSegment[]): TtsController {
     play(index, activeSegmentsRef.current);
   }, [play]);
 
-  const segmentSignature = useMemo(() => segments.map(({ id, text }) => `${id}:${text.length}`).join('|'), [segments]);
-  useEffect(() => {
+  const segmentSignature = useMemo(() => JSON.stringify(segments.map(({ id, text }) => [id, text])), [segments]);
+  const previousSegmentSignatureRef = useRef(segmentSignature);
+  useLayoutEffect(() => {
+    if (previousSegmentSignatureRef.current === segmentSignature) return;
+    previousSegmentSignatureRef.current = segmentSignature;
     activeSegmentsRef.current = segments;
-  }, [segments, segmentSignature]);
+    if (status === 'loading' || status === 'speaking' || status === 'paused') {
+      // Evita continuar una versión antigua con resaltados de la versión editada.
+      resetLocal();
+      cancelSpeech(instanceIdRef.current);
+    }
+  }, [resetLocal, segmentSignature, segments, status]);
 
   useEffect(() => {
     let mounted = true;

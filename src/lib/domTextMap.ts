@@ -150,13 +150,21 @@ export function clearSearchHighlights(map?: DocumentTextMap | null): void {
 
 export function applySearchHighlights(map: DocumentTextMap | null, query: string, activeIndex = -1, scroll = false): void {
   clearSearchHighlights(map);
-  const segment = map?.segments[0];
-  if (!map || !segment || !query.trim()) return;
-  const matches = findMatches(segment.text, query).slice(0, 500);
-  const ranges = matches.flatMap((match) => {
-    const range = createRange(segment, match.index, match.index + match.length);
-    return range ? [range] : [];
-  });
+  if (!map || !query.trim()) return;
+  const ranges: Range[] = [];
+  const owners: HTMLElement[] = [];
+  let remaining = 500;
+  for (const segment of map.segments) {
+    if (remaining <= 0) break;
+    const matches = findMatches(segment.text, query).slice(0, remaining);
+    remaining -= matches.length;
+    for (const match of matches) {
+      const range = createRange(segment, match.index, match.index + match.length);
+      if (!range) continue;
+      ranges.push(range);
+      owners.push(segment.element);
+    }
+  }
   const api = highlightApi();
   if (api && ranges.length) {
     api.registry.set('openhub-search', new api.constructor(...ranges));
@@ -164,7 +172,7 @@ export function applySearchHighlights(map: DocumentTextMap | null, query: string
   } else {
     ranges.forEach((range, index) => paintOverlay(map.root, range, index === activeIndex ? 'search-current' : 'search'));
   }
-  if (scroll && activeIndex >= 0 && ranges[activeIndex]) scrollRangeIntoView(ranges[activeIndex], segment.element);
+  if (scroll && activeIndex >= 0 && ranges[activeIndex]) scrollRangeIntoView(ranges[activeIndex], owners[activeIndex]);
 }
 
 export function scrollRangeIntoView(range: Range, element: HTMLElement): void {

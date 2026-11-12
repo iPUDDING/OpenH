@@ -73,7 +73,7 @@ export const useAppStore = create<AppState>()(
       addRecent: (document) => set((state) => {
         const id = document.path || `draft:${document.name}`;
         const previous = state.recents.find((item) => item.id === id);
-        const content = document.kind === 'markdown' && document.content && document.content.length <= 2_000_000
+        const content = document.kind === 'markdown' && document.content !== undefined && document.content.length <= 2_000_000
           ? document.content
           : previous?.content;
         const next: RecentDocument = { ...document, content, id, openedAt: Date.now() };

@@ -8,6 +8,8 @@
     "dialog:default",
     "dialog:allow-open",
     "dialog:allow-save",
+    "updater:default",
+    "process:default",
     "fs:allow-read-file",
     "fs:allow-write-file",
     {

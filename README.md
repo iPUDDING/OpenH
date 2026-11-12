@@ -1,6 +1,6 @@
 # OpenHub (DevSuite Hub)
 
-Aplicación de escritorio **Windows 10/11, 100% offline**, que integra un visor Markdown/PDF, un estudio de texto a voz y mapas mentales interactivos. Construida con **Tauri v2, Rust, React 18, TypeScript, Tailwind CSS, Radix UI y Zustand**.
+Aplicación de escritorio **Windows 10/11**, que integra un visor Markdown/PDF, un estudio de texto a voz y mapas mentales interactivos. Todo el trabajo y los recursos funcionan offline; solo buscar o descargar actualizaciones requiere internet. Construida con **Tauri v2, Rust, React 18, TypeScript, Tailwind CSS, Radix UI y Zustand**.
 
 ## Funcionalidades
 
@@ -8,11 +8,12 @@ Aplicación de escritorio **Windows 10/11, 100% offline**, que integra un visor 
 - **PDF local:** PDF.js y worker empaquetados; zoom, ajuste, páginas, búsqueda global y capa de texto seleccionable.
 - **Voz:** Web Speech API / voces SAPI disponibles en WebView2; velocidad, tono, volumen, lectura de selección, párrafos, progreso, resaltado y auto-scroll.
 - **Mapas:** CodeMirror 6 + Markmap, zoom, pan, colapso, modo foco, plantillas y exportación MD/SVG/HTML/PNG/PDF mediante impresión.
-- **Pomodoro compartido:** trabajo/descanso configurables, pausa, salto, reinicio y estadísticas de la ejecución.
+- **Pomodoro compartido:** trabajo/descanso configurables, pausa, salto, reinicio, estadísticas y alarma local diferente al terminar enfoque o descanso. Panel flotante accesible sobre Visor, TTS y Mapas.
 - **Productividad:** paleta `Ctrl+K`, barra superior ocultable con `Ctrl+Shift+H`, índice Markdown navegable, búsqueda PDF con atajos y búsqueda/centrado de temas Markmap.
 - **Lectura accesible:** tamaño, interlineado y ancho configurables; pronunciación TTS personalizada sin alterar el texto ni perder su resaltado.
 - **Respaldo local:** exportación/restauración JSON versionada y validada de preferencias, pronunciaciones y recientes.
-- **Privacidad:** sin cuentas, analítica, CDN ni servicios remotos. El estado se conserva en `localStorage` de WebView2.
+- **Actualizaciones firmadas:** aviso al iniciar, descarga con progreso, instalación con aceptación y reinicio mediante GitHub Releases. [Configuración](docs/ACTUALIZACIONES.md).
+- **Privacidad:** sin cuentas, analítica ni recursos remotos. El estado se conserva en `localStorage` de WebView2; únicamente el actualizador contacta GitHub Releases.
 
 El análisis comparativo, las decisiones de diseño, las fuentes y la matriz de verificación están en [Investigación y mejoras](docs/INVESTIGACION-Y-MEJORAS.md).
 
@@ -24,7 +25,7 @@ Las siguientes imágenes son capturas directas del **build de producción ejecut
 
 Capturas individuales a 1440 × 900 px: [Inicio](docs/screenshots/01-inicio.png) · [Visor Markdown](docs/screenshots/02-visor-markdown.png) · [Estudio TTS](docs/screenshots/03-estudio-tts.png) · [Mapas mentales](docs/screenshots/04-mapas-mentales.png) · [Ajustes](docs/screenshots/05-ajustes.png) · [Modo oscuro](docs/screenshots/06-mapa-modo-oscuro.png).
 
-**Nuevas mejoras verificadas:** [Paleta de comandos](docs/screenshots/mejoras/07-paleta-comandos.png) · [Índice de lectura](docs/screenshots/mejoras/08-indice-lectura.png) · [Búsqueda PDF en página 2](docs/screenshots/mejoras/09-busqueda-pdf.png) · [Búsqueda Markmap](docs/screenshots/mejoras/10-busqueda-markmap.png) · [Pronunciación y accesibilidad](docs/screenshots/mejoras/11-pronunciacion-ajustes.png) · [Barra superior oculta](docs/screenshots/mejoras/12-barra-superior-oculta.png) · [Leer selección](docs/screenshots/mejoras/13-leer-seleccion.png).
+**Nuevas mejoras verificadas:** [Paleta de comandos](docs/screenshots/mejoras/07-paleta-comandos.png) · [Índice de lectura](docs/screenshots/mejoras/08-indice-lectura.png) · [Búsqueda PDF en página 2](docs/screenshots/mejoras/09-busqueda-pdf.png) · [Búsqueda Markmap](docs/screenshots/mejoras/10-busqueda-markmap.png) · [Pronunciación y accesibilidad](docs/screenshots/mejoras/11-pronunciacion-ajustes.png) · [Barra superior oculta](docs/screenshots/mejoras/12-barra-superior-oculta.png) · [Leer selección](docs/screenshots/mejoras/13-leer-seleccion.png) · [Actualización disponible](docs/screenshots/mejoras/14-actualizacion-disponible.png) · [Pomodoro superpuesto](docs/screenshots/mejoras/15-pomodoro-superpuesto.png).
 
 ### Cómo escuchar solo una selección
 
@@ -36,7 +37,7 @@ Capturas individuales a 1440 × 900 px: [Inicio](docs/screenshots/01-inicio.png)
 
 - Windows 10/11 para la aplicación nativa.
 - Node.js 22.12 o superior (Node 22 LTS).
-- Rust estable (`rustup`) y [requisitos de Tauri v2](https://v2.tauri.app/start/prerequisites/).
+- Rust 1.90 o superior (`rustup`) y [requisitos de Tauri v2](https://v2.tauri.app/start/prerequisites/).
 - Microsoft WebView2 (normalmente ya incluido en Windows 11).
 
 ## Desarrollo
@@ -85,7 +86,8 @@ src-tauri/target/release/bundle/msi/OpenHub_1.0.0_x64_en-US.msi
    ```
 
 2. Abre la pestaña **Actions**. El workflow `Build OpenHub para Windows` se ejecuta en cada push a `main` y también manualmente mediante **Run workflow**.
-3. Al terminar, descarga el artefacto **`openhub-windows`**; contiene los instaladores `.exe` y `.msi`.
+3. Para activar releases y actualizaciones, completa primero [la configuración de secretos y OpenH-updates](docs/ACTUALIZACIONES.md). Cada push a `main` publica una release firmada; los PR solo compilan y prueban.
+4. Al terminar, descarga el artifact **`openhub-windows-<versión>`** o el instalador de la release pública correspondiente.
 
 ## Estructura
 

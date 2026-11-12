@@ -5,6 +5,7 @@ import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { CommandPalette } from '@/components/layout/CommandPalette';
+import { UpdateManager } from '@/components/layout/UpdateManager';
 import { Button } from '@/components/ui/Button';
 import { Hint } from '@/components/ui/Tooltip';
 import { useAppStore } from '@/store/useAppStore';
@@ -102,6 +103,7 @@ export default function App() {
         </main>
       </div>
       <CommandPalette open={commandsOpen} onClose={() => setCommandsOpen(false)} onToggleSidebar={() => setSidebarOpen((open) => !open)} onToggleHeader={() => setHeaderHidden((hidden) => !hidden)} />
+      <UpdateManager />
     </div>
   );
 }

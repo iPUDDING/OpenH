@@ -22,6 +22,13 @@ describe('utilidades de texto', () => {
     expect(findMatches('Árbol y arbolito', 'árbol')).toHaveLength(2);
   });
 
+  it('conserva los rangos originales cuando Unicode se descompone', () => {
+    expect(findMatches('한글 테스트', '한')).toEqual([{ index: 0, length: 1 }]);
+    expect(findMatches('α한글', '한')).toEqual([{ index: 1, length: 1 }]);
+    expect(findMatches('Cafe\u0301 y té', 'café')).toEqual([{ index: 0, length: 5 }]);
+    expect(findMatches('😀 árbol', 'árbol')).toEqual([{ index: 3, length: 5 }]);
+  });
+
   it('divide párrafos y descarta vacíos', () => {
     expect(splitParagraphs('Uno\n\nDos\nTres')).toEqual([
       { id: 'paragraph-0', text: 'Uno' },
@@ -37,5 +44,9 @@ describe('utilidades de texto', () => {
   it('formatea relojes y nombres de archivo', () => {
     expect(formatClock(65)).toBe('01:05');
     expect(safeFileName('mi: mapa?')).toBe('mi- mapa-');
+    expect(safeFileName('CON')).toBe('_CON');
+    expect(safeFileName('COM1.md')).toBe('_COM1.md');
+    expect(safeFileName('mapa final.')).toBe('mapa final');
+    expect(safeFileName('   ')).toBe('openhub');
   });
 });

@@ -26,7 +26,7 @@ describe('copia de seguridad local', () => {
     expect(result.pronunciationRules).toEqual([{ id: '1', from: 'Kubernetes', to: 'ku ber ne tes', enabled: false }]);
   });
   it('conserva los valores actuales para campos opcionales ausentes', () => {
-    const current = { readerFontSize: 100, readerLineHeight: 1.75, readerWidth: 768, recents: [{ id: 'actual', name: 'actual.md', kind: 'markdown' as const, openedAt: 1 }], pronunciationRules: [{ id: 'r', from: 'a', to: 'b', enabled: true }] };
+    const current = { readerFontSize: 100, readerLineHeight: 1.75, readerWidth: 768, viewerMode: 'split' as const, markdownPath: 'C:\\docs\\actual.md', recents: [{ id: 'actual', name: 'actual.md', kind: 'markdown' as const, openedAt: 1 }], pronunciationRules: [{ id: 'r', from: 'a', to: 'b', enabled: true }] };
     useAppStore.setState(current);
     expect(parseWorkspaceBackup(backup({ readerFontSize: 120 }))).toMatchObject({ ...current, readerFontSize: 120 });
   });

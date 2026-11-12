@@ -76,10 +76,10 @@ export function parseWorkspaceBackup(json: string) {
     readerLineHeight: number(data.readerLineHeight, current.readerLineHeight, 1.4, 2.2),
     readerWidth: number(data.readerWidth, current.readerWidth, 600, 1100),
     recents: recentDocuments(data.recents, current.recents),
-    viewerMode: data.viewerMode === 'split' ? 'split' as const : 'preview' as const,
+    viewerMode: data.viewerMode === 'split' ? 'split' as const : data.viewerMode === 'preview' ? 'preview' as const : current.viewerMode,
     markdownContent: text(data.markdownContent, current.markdownContent),
     markdownName: text(data.markdownName, current.markdownName, 260),
-    markdownPath: typeof data.markdownPath === 'string' ? data.markdownPath : undefined,
+    markdownPath: typeof data.markdownPath === 'string' ? data.markdownPath : current.markdownPath,
     ttsText: text(data.ttsText, current.ttsText),
     tts: object(data.tts) ? {
       voiceURI: text(data.tts.voiceURI, current.tts.voiceURI, 500),

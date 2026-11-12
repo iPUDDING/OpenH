@@ -38,13 +38,31 @@ export interface TextMatch {
 export function findMatches(text: string, query: string): TextMatch[] {
   const needle = normalizeSearchText(query.trim());
   if (!needle) return [];
-  const haystack = normalizeSearchText(text);
+  let haystack = '';
+  const starts: number[] = [];
+  const ends: number[] = [];
+  for (let offset = 0; offset < text.length;) {
+    const character = String.fromCodePoint(text.codePointAt(offset)!);
+    const normalized = normalizeSearchText(character);
+    if (!normalized && ends.length && /\p{M}/u.test(character)) {
+      // Una marca combinante pertenece al carácter anterior aunque desaparezca al normalizar.
+      ends[ends.length - 1] = offset + character.length;
+    }
+    for (let partIndex = 0; partIndex < normalized.length; partIndex += 1) {
+      haystack += normalized[partIndex];
+      starts.push(offset);
+      ends.push(offset + character.length);
+    }
+    offset += character.length;
+  }
   const matches: TextMatch[] = [];
   let from = 0;
   while (from <= haystack.length - needle.length) {
     const index = haystack.indexOf(needle, from);
     if (index < 0) break;
-    matches.push({ index, length: needle.length });
+    const start = starts[index];
+    const end = ends[index + needle.length - 1];
+    if (start !== undefined && end !== undefined) matches.push({ index: start, length: end - start });
     from = index + Math.max(1, needle.length);
   }
   return matches;

@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 export function DocumentOutline({ headings }: { headings: DocumentHeading[] }) {
   const [active, setActive] = useState(headings[0]?.id ?? '');
 
+  useEffect(() => setActive(headings[0]?.id ?? ''), [headings]);
+
   useEffect(() => {
     const observer = new IntersectionObserver((entries) => {
       const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);

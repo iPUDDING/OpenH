@@ -35,7 +35,10 @@ export function dirname(filePath: string): string {
 }
 
 export function safeFileName(name: string): string {
-  return name.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-').replace(/\s+/g, ' ').trim() || 'openhub';
+  const cleaned = name.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-').replace(/\s+/g, ' ').trim().replace(/[. ]+$/g, '');
+  const candidate = cleaned || 'openhub';
+  const windowsReserved = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(candidate);
+  return `${windowsReserved ? '_' : ''}${candidate}`.slice(0, 120).replace(/[. ]+$/g, '') || 'openhub';
 }
 
 export function isProbablyMobile(): boolean {

@@ -12,7 +12,7 @@ const tools = [
   { id: 'settings' as const, label: 'Ajustes', icon: Settings, shortcut: 'Alt+4', color: 'text-slate-500' },
 ];
 
-export function Sidebar({ open }: { open: boolean }) {
+export function Sidebar({ open, headerHidden = false }: { open: boolean; headerHidden?: boolean }) {
   const active = useAppStore((state) => state.activeTool);
   const setActive = useAppStore((state) => state.setActiveTool);
   const recents = useAppStore((state) => state.recents);
@@ -22,7 +22,7 @@ export function Sidebar({ open }: { open: boolean }) {
   const openRecent = (recent: RecentDocument) => window.dispatchEvent(new CustomEvent('openhub:recent', { detail: recent }));
 
   return (
-    <aside className={cn('z-30 flex shrink-0 flex-col border-r bg-card transition-[width] duration-200 max-lg:absolute max-lg:bottom-0 max-lg:left-0 max-lg:top-14 max-lg:shadow-xl', open ? 'w-60' : 'w-16 max-lg:w-0 max-lg:overflow-hidden')} aria-label="Navegación principal">
+    <aside className={cn('z-30 flex shrink-0 flex-col border-r bg-card transition-[width] duration-200 max-lg:absolute max-lg:bottom-0 max-lg:left-0 max-lg:shadow-xl', headerHidden ? 'max-lg:top-0' : 'max-lg:top-14', open ? 'w-60' : 'w-16 max-lg:w-0 max-lg:overflow-hidden')} aria-label="Navegación principal">
       <nav className="space-y-1 p-2">
         {tools.map(({ id, label, icon: Icon, shortcut, color }) => {
           const button = (
@@ -50,7 +50,7 @@ export function Sidebar({ open }: { open: boolean }) {
                   <FileText className={cn('h-3.5 w-3.5 shrink-0', recent.kind === 'pdf' ? 'text-red-400' : 'text-blue-400')} />
                   <span className="min-w-0"><span className="block truncate text-xs">{recent.name}</span><span className="block text-[10px] text-muted-foreground">{new Date(recent.openedAt).toLocaleDateString()}</span></span>
                 </button>
-                <button className="mr-1 hidden rounded p-1 text-muted-foreground hover:bg-background hover:text-destructive group-hover:block" onClick={() => removeRecent(recent.id)} aria-label={`Quitar ${recent.name} de recientes`}><X className="h-3 w-3" /></button>
+                <button className="mr-1 flex rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-destructive focus:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100" onClick={() => removeRecent(recent.id)} aria-label={`Quitar ${recent.name} de recientes`}><X className="h-3 w-3" /></button>
               </div>
             )) : <p className="px-3 py-5 text-center text-xs leading-5 text-muted-foreground">Los documentos que abras aparecerán aquí.</p>}
           </div>

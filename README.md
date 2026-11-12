@@ -6,10 +6,10 @@ Aplicación de escritorio **Windows 10/11, 100% offline**, que integra un visor 
 
 - **Documentos:** Markdown, TXT y PDF; diálogo nativo, drag & drop, historial, editor dividido, GFM, código y KaTeX.
 - **PDF local:** PDF.js y worker empaquetados; zoom, ajuste, páginas, búsqueda global y capa de texto seleccionable.
-- **Voz:** Web Speech API / voces SAPI disponibles en WebView2; velocidad, tono, volumen, selección, párrafos, progreso, resaltado y auto-scroll.
+- **Voz:** Web Speech API / voces SAPI disponibles en WebView2; velocidad, tono, volumen, lectura de selección, párrafos, progreso, resaltado y auto-scroll.
 - **Mapas:** CodeMirror 6 + Markmap, zoom, pan, colapso, modo foco, plantillas y exportación MD/SVG/HTML/PNG/PDF mediante impresión.
 - **Pomodoro compartido:** trabajo/descanso configurables, pausa, salto, reinicio y estadísticas de la ejecución.
-- **Productividad:** paleta `Ctrl+K`, índice Markdown navegable, búsqueda PDF con atajos y búsqueda/centrado de temas Markmap.
+- **Productividad:** paleta `Ctrl+K`, barra superior ocultable con `Ctrl+Shift+H`, índice Markdown navegable, búsqueda PDF con atajos y búsqueda/centrado de temas Markmap.
 - **Lectura accesible:** tamaño, interlineado y ancho configurables; pronunciación TTS personalizada sin alterar el texto ni perder su resaltado.
 - **Respaldo local:** exportación/restauración JSON versionada y validada de preferencias, pronunciaciones y recientes.
 - **Privacidad:** sin cuentas, analítica, CDN ni servicios remotos. El estado se conserva en `localStorage` de WebView2.
@@ -24,7 +24,13 @@ Las siguientes imágenes son capturas directas del **build de producción ejecut
 
 Capturas individuales a 1440 × 900 px: [Inicio](docs/screenshots/01-inicio.png) · [Visor Markdown](docs/screenshots/02-visor-markdown.png) · [Estudio TTS](docs/screenshots/03-estudio-tts.png) · [Mapas mentales](docs/screenshots/04-mapas-mentales.png) · [Ajustes](docs/screenshots/05-ajustes.png) · [Modo oscuro](docs/screenshots/06-mapa-modo-oscuro.png).
 
-**Nuevas mejoras verificadas:** [Paleta de comandos](docs/screenshots/mejoras/07-paleta-comandos.png) · [Índice de lectura](docs/screenshots/mejoras/08-indice-lectura.png) · [Búsqueda PDF en página 2](docs/screenshots/mejoras/09-busqueda-pdf.png) · [Búsqueda Markmap](docs/screenshots/mejoras/10-busqueda-markmap.png) · [Pronunciación y accesibilidad](docs/screenshots/mejoras/11-pronunciacion-ajustes.png).
+**Nuevas mejoras verificadas:** [Paleta de comandos](docs/screenshots/mejoras/07-paleta-comandos.png) · [Índice de lectura](docs/screenshots/mejoras/08-indice-lectura.png) · [Búsqueda PDF en página 2](docs/screenshots/mejoras/09-busqueda-pdf.png) · [Búsqueda Markmap](docs/screenshots/mejoras/10-busqueda-markmap.png) · [Pronunciación y accesibilidad](docs/screenshots/mejoras/11-pronunciacion-ajustes.png) · [Barra superior oculta](docs/screenshots/mejoras/12-barra-superior-oculta.png) · [Leer selección](docs/screenshots/mejoras/13-leer-seleccion.png).
+
+### Cómo escuchar solo una selección
+
+1. Selecciona texto con el ratón en la vista previa, en el editor Markdown o en la capa de texto del PDF.
+2. Pulsa **Leer selección**. El botón muestra cuántos caracteres hay seleccionados y conserva la selección al hacer clic.
+3. Los controles de pausa, detener, anterior y repetir respetan ese fragmento; no vuelven al documento completo. Si no hay selección, la aplicación muestra instrucciones y no inicia la voz.
 
 ## Requisitos
 

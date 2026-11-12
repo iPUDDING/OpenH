@@ -16,6 +16,7 @@ export interface TtsController {
   remainingSeconds: number;
   error: string | null;
   play: (startIndex?: number, customSegments?: SpeechSegment[]) => void;
+  replay: () => void;
   pause: () => void;
   resume: () => void;
   stop: () => void;
@@ -150,6 +151,7 @@ export function useTts(segments: SpeechSegment[]): TtsController {
       clearFallback();
       setError(`No se pudo reproducir la voz (${event.error}). Prueba con otra voz del sistema.`);
       setStatus('error');
+      updatePosition(null);
     };
     utterance.onend = () => {
       if (token !== tokenRef.current) return;
@@ -187,14 +189,16 @@ export function useTts(segments: SpeechSegment[]): TtsController {
     if (!receivedBoundaryRef.current) runFallback();
   }, [runFallback, status, supported]);
 
+  const replay = useCallback(() => play(0, activeSegmentsRef.current), [play]);
+
   const next = useCallback(() => {
     const index = (positionRef.current?.segmentIndex ?? -1) + 1;
-    if (index < activeSegmentsRef.current.length) play(index);
+    if (index < activeSegmentsRef.current.length) play(index, activeSegmentsRef.current);
   }, [play]);
 
   const previous = useCallback(() => {
     const index = Math.max(0, (positionRef.current?.segmentIndex ?? 1) - 1);
-    play(index);
+    play(index, activeSegmentsRef.current);
   }, [play]);
 
   const segmentSignature = useMemo(() => segments.map(({ id, text }) => `${id}:${text.length}`).join('|'), [segments]);
@@ -229,11 +233,12 @@ export function useTts(segments: SpeechSegment[]): TtsController {
   }, [clearFallback]);
 
   const remainingSeconds = useMemo(() => {
+    if (status === 'completed') return 0;
     const source = activeSegmentsRef.current;
     const index = position?.segmentIndex ?? 0;
     const remaining = source.slice(index).map(({ text }) => text).join(' ');
     return estimateSeconds(remaining, settings.rate);
-  }, [position, settings.rate, segmentSignature]);
+  }, [position, settings.rate, segmentSignature, status]);
 
   return {
     supported,
@@ -244,6 +249,7 @@ export function useTts(segments: SpeechSegment[]): TtsController {
     remainingSeconds,
     error,
     play,
+    replay,
     pause,
     resume,
     stop,

@@ -1,10 +1,12 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, PanelTopOpen } from 'lucide-react';
 import DocumentViewer from '@/components/tools/viewer/DocumentViewer';
 import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary';
 import { CommandPalette } from '@/components/layout/CommandPalette';
+import { Button } from '@/components/ui/Button';
+import { Hint } from '@/components/ui/Tooltip';
 import { useAppStore } from '@/store/useAppStore';
 import type { ToolId } from '@/types';
 
@@ -20,12 +22,18 @@ export default function App() {
   const theme = useAppStore((state) => state.theme);
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const [commandsOpen, setCommandsOpen] = useState(false);
+  const [headerHidden, setHeaderHidden] = useState(false);
   const [visited, setVisited] = useState<Set<ToolId>>(() => new Set(['viewer']));
   const mainRef = useRef<HTMLElement>(null);
+  const revealHeaderRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setVisited((current) => current.has(activeTool) ? current : new Set(current).add(activeTool));
   }, [activeTool]);
+
+  useEffect(() => {
+    if (headerHidden) window.requestAnimationFrame(() => revealHeaderRef.current?.focus());
+  }, [headerHidden]);
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -43,6 +51,11 @@ export default function App() {
       if ((event.ctrlKey || event.metaKey) && event.key.toLocaleLowerCase() === 'k') {
         event.preventDefault();
         setCommandsOpen((open) => !open);
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLocaleLowerCase() === 'h') {
+        event.preventDefault();
+        setHeaderHidden((hidden) => !hidden);
         return;
       }
       if (event.altKey && /^[1-4]$/.test(event.key)) {
@@ -69,10 +82,18 @@ export default function App() {
   );
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <Header onToggleSidebar={() => setSidebarOpen((open) => !open)} onOpenCommands={() => setCommandsOpen(true)} />
+    <div className="relative flex h-full flex-col overflow-hidden">
+      {headerHidden ? (
+        <Hint label="Mostrar barra superior · Ctrl+Shift+H">
+          <Button ref={revealHeaderRef} variant="secondary" size="sm" className="absolute left-1/2 top-2 z-50 -translate-x-1/2 shadow-lg" onClick={() => setHeaderHidden(false)} aria-label="Mostrar barra superior">
+            <PanelTopOpen className="h-4 w-4" />Mostrar barra
+          </Button>
+        </Hint>
+      ) : (
+        <Header onToggleSidebar={() => setSidebarOpen((open) => !open)} onOpenCommands={() => setCommandsOpen(true)} onHide={() => setHeaderHidden(true)} />
+      )}
       <div className="relative flex min-h-0 flex-1">
-        <Sidebar open={sidebarOpen} />
+        <Sidebar open={sidebarOpen} headerHidden={headerHidden} />
         <main ref={mainRef} className="min-w-0 flex-1 bg-background">
           {panel('viewer', <DocumentViewer />)}
           {visited.has('tts') && panel('tts', <Suspense fallback={<ModuleFallback />}><TtsStudio /></Suspense>)}
@@ -80,7 +101,7 @@ export default function App() {
           {visited.has('settings') && panel('settings', <Suspense fallback={<ModuleFallback />}><SettingsView /></Suspense>)}
         </main>
       </div>
-      <CommandPalette open={commandsOpen} onClose={() => setCommandsOpen(false)} onToggleSidebar={() => setSidebarOpen((open) => !open)} />
+      <CommandPalette open={commandsOpen} onClose={() => setCommandsOpen(false)} onToggleSidebar={() => setSidebarOpen((open) => !open)} onToggleHeader={() => setHeaderHidden((hidden) => !hidden)} />
     </div>
   );
 }

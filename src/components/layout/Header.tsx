@@ -1,9 +1,9 @@
-import { CloudOff, Menu, Moon, Search, Sun } from 'lucide-react';
+import { CloudOff, Menu, Moon, PanelTopClose, Search, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Hint } from '@/components/ui/Tooltip';
 import { useAppStore } from '@/store/useAppStore';
 
-export function Header({ onToggleSidebar, onOpenCommands }: { onToggleSidebar: () => void; onOpenCommands: () => void }) {
+export function Header({ onToggleSidebar, onOpenCommands, onHide }: { onToggleSidebar: () => void; onOpenCommands: () => void; onHide: () => void }) {
   const theme = useAppStore((state) => state.theme);
   const setTheme = useAppStore((state) => state.setTheme);
   const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -23,6 +23,9 @@ export function Header({ onToggleSidebar, onOpenCommands }: { onToggleSidebar: (
         <span className="hidden text-xs text-muted-foreground lg:inline">v1.0.0</span>
         <Hint label={isDark ? 'Usar tema claro' : 'Usar tema oscuro'}>
           <Button variant="ghost" size="icon-sm" onClick={() => setTheme(isDark ? 'light' : 'dark')} aria-label="Cambiar tema">{isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button>
+        </Hint>
+        <Hint label="Ocultar barra superior · Ctrl+Shift+H">
+          <Button variant="ghost" size="icon-sm" onClick={onHide} aria-label="Ocultar barra superior"><PanelTopClose className="h-4 w-4" /></Button>
         </Hint>
       </div>
     </header>

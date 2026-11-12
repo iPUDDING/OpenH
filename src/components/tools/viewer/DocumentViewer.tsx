@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type DragEvent } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { Columns2, Download, FileText, FolderOpen, ListTree, Loader2, PanelTop, UploadCloud } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -14,6 +14,7 @@ import { isTauri } from '@/services/fileSystemService';
 import { countWords } from '@/lib/text';
 import { extractHeadings } from '@/lib/headings';
 import { prepareSpeechSegments } from '@/lib/pronunciation';
+import { selectedDocumentText } from '@/lib/selection';
 import { basename } from '@/lib/utils';
 import type { DocumentTextMap } from '@/lib/domTextMap';
 import type { OpenedDocument, RecentDocument, SpeechSegment } from '@/types';
@@ -49,7 +50,12 @@ export default function DocumentViewer() {
   const [pdfSegments, setPdfSegments] = useState<SpeechSegment[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [outlineOpen, setOutlineOpen] = useState(false);
+  const [selectionText, setSelectionText] = useState('');
+  const sectionRef = useRef<HTMLElement>(null);
   const headings = useMemo(() => extractHeadings(markdown), [markdown]);
+  const documentWordCount = useMemo(() => current?.kind === 'pdf'
+    ? countWords(pdfSegments.map((segment) => segment.sourceText ?? segment.text).join('\n'))
+    : countWords(markdown), [current?.kind, markdown, pdfSegments]);
 
   const sourceSegments = useMemo<SpeechSegment[]>(() => current?.kind === 'pdf' ? pdfSegments : textMap?.segments ?? [], [current?.kind, pdfSegments, textMap]);
   const segments = useMemo(() => prepareSpeechSegments(sourceSegments, pronunciationRules), [sourceSegments, pronunciationRules]);
@@ -58,6 +64,7 @@ export default function DocumentViewer() {
   const loadDocument = useCallback((document: OpenedDocument) => {
     tts.stop();
     setNotice(null);
+    setSelectionText('');
     setTextMap(null);
     setPdfSegments([]);
     setCurrent({ name: document.name, path: document.path, kind: document.kind, data: document.data });
@@ -131,15 +138,24 @@ export default function DocumentViewer() {
     if (document) loadDocument(document);
   };
 
-  const readSelection = () => {
-    const text = window.getSelection()?.toString().trim();
+  const syncSelection = useCallback(() => {
+    setSelectionText(selectedDocumentText(sectionRef.current));
+  }, []);
+
+  useEffect(() => {
+    document.addEventListener('selectionchange', syncSelection);
+    return () => document.removeEventListener('selectionchange', syncSelection);
+  }, [syncSelection]);
+
+  const readSelection = useCallback(() => {
+    const text = selectedDocumentText(sectionRef.current) || selectionText;
     if (!text) {
-      setNotice('Selecciona primero un fragmento del documento.');
+      setNotice('Para escuchar un fragmento: selecciónalo con el ratón en la vista previa, el editor o el PDF y pulsa «Leer selección».');
       return;
     }
-    setNotice(null);
+    setNotice(`Leyendo solo la selección: ${countWords(text)} ${countWords(text) === 1 ? 'palabra' : 'palabras'}.`);
     tts.play(0, prepareSpeechSegments([{ id: 'selection', text }], pronunciationRules));
-  };
+  }, [pronunciationRules, selectionText, tts.play]);
 
   const saveMarkdown = async () => {
     const saved = await files.saveFile(markdown, { suggestedName: current?.name || 'documento.md', extensions: ['md'], filterName: 'Markdown' });
@@ -160,7 +176,11 @@ export default function DocumentViewer() {
 
   return (
     <section
+      ref={sectionRef}
       className="flex h-full min-h-0 flex-col"
+      onMouseUp={syncSelection}
+      onKeyUp={syncSelection}
+      onSelect={syncSelection}
       onDrop={onDrop}
       onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; }}
       aria-label="Visor de documentos"
@@ -170,7 +190,7 @@ export default function DocumentViewer() {
           <div className="rounded-lg bg-primary/10 p-2 text-primary"><FileText className="h-4 w-4" /></div>
           <div className="min-w-0">
             <h1 className="truncate text-sm font-semibold">{current?.name ?? 'Visor de documentos'}</h1>
-            <p className="truncate text-xs text-muted-foreground">{current?.path || (current ? `${countWords(markdown)} palabras` : 'Markdown, TXT y PDF')}</p>
+            <p className="truncate text-xs text-muted-foreground">{current?.path || (current ? `${documentWordCount} palabras` : 'Markdown, TXT y PDF')}</p>
           </div>
         </div>
         <div className="ml-auto flex items-center gap-1.5">
@@ -181,7 +201,7 @@ export default function DocumentViewer() {
                 <Hint label="Editor y vista dividida"><Button variant={mode === 'split' ? 'secondary' : 'ghost'} size="icon-sm" onClick={() => setMode('split')} aria-label="Vista dividida"><Columns2 className="h-4 w-4" /></Button></Hint>
               </div>
               <Hint label="Índice del documento"><Button variant={outlineOpen ? 'secondary' : 'ghost'} size="icon-sm" onClick={() => setOutlineOpen((open) => !open)} disabled={!headings.length} aria-label="Mostrar índice"><ListTree className="h-4 w-4" /></Button></Hint>
-              <Hint label="Guardar Markdown"><Button variant="ghost" size="icon-sm" onClick={() => void saveMarkdown()} aria-label="Guardar Markdown"><Download className="h-4 w-4" /></Button></Hint>
+              <Hint label="Guardar Markdown"><Button variant="ghost" size="icon-sm" onClick={() => void saveMarkdown()} disabled={files.busy} aria-label="Guardar Markdown"><Download className="h-4 w-4" /></Button></Hint>
             </>
           )}
           <Button size="sm" onClick={() => void openDialog()} disabled={files.busy}><FolderOpen className="h-4 w-4" />Abrir</Button>
@@ -214,7 +234,7 @@ export default function DocumentViewer() {
         </div>
       ) : (
         <>
-          <ReaderToolbar controller={tts} onReadSelection={readSelection} showPomodoro={isMarkdown} />
+          <ReaderToolbar controller={tts} onReadSelection={readSelection} selectionLength={selectionText.length} showPomodoro={isMarkdown} />
           {isMarkdown ? (
             <div className={`grid min-h-0 flex-1 ${mode === 'split' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
               {mode === 'split' && (

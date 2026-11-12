@@ -62,8 +62,9 @@ Con la build de producción servida en `http://127.0.0.1:1420`:
 npm install --no-save --package-lock=false playwright
 npx playwright install chromium
 node verify-improvements.mjs
+node verify-usability.mjs
 ```
 
-El script crea un PDF real de dos páginas, lo carga mediante el input de archivos, verifica las funciones y guarda capturas auténticas en `docs/screenshots/mejoras/`. También imprime `errors: []` al finalizar sin errores de consola. En Linux se pueden instalar las bibliotecas de Chromium con `npx playwright install-deps chromium`.
+El primer script crea un PDF real de dos páginas, lo carga mediante el input de archivos y verifica las funciones generales. El segundo comprueba selección TTS, pausa de Pomodoro y barra superior; solo dentro de ese navegador de QA sustituye Web Speech por un doble que permite inspeccionar el texto enviado. Ambos guardan capturas auténticas en `docs/screenshots/mejoras/` e imprimen `errors: []` al finalizar sin errores de consola. En Linux se pueden instalar las bibliotecas de Chromium con `npx playwright install-deps chromium`.
 
 No se utilizan mockups, imágenes generadas por IA ni datos pintados para simular resultados.

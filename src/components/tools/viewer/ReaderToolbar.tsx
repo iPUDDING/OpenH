@@ -12,9 +12,10 @@ interface ReaderToolbarProps {
   controller: TtsController;
   onReadSelection: () => void;
   showPomodoro?: boolean;
+  selectionLength?: number;
 }
 
-export function ReaderToolbar({ controller, onReadSelection, showPomodoro = false }: ReaderToolbarProps) {
+export function ReaderToolbar({ controller, onReadSelection, showPomodoro = false, selectionLength = 0 }: ReaderToolbarProps) {
   const settings = useAppStore((state) => state.tts);
   const setSettings = useAppStore((state) => state.setTtsSettings);
   const active = controller.status === 'speaking' || controller.status === 'paused' || controller.status === 'loading';
@@ -37,8 +38,10 @@ export function ReaderToolbar({ controller, onReadSelection, showPomodoro = fals
         <Hint label="Párrafo anterior"><Button variant="ghost" size="icon-sm" onClick={controller.previous} disabled={!active} aria-label="Párrafo anterior"><SkipBack className="h-4 w-4" /></Button></Hint>
         <Hint label="Párrafo siguiente"><Button variant="ghost" size="icon-sm" onClick={controller.next} disabled={!active} aria-label="Párrafo siguiente"><SkipForward className="h-4 w-4" /></Button></Hint>
         <Hint label="Detener"><Button variant="ghost" size="icon-sm" onClick={controller.stop} disabled={!active && controller.status !== 'completed'} aria-label="Detener lectura"><Square className="h-4 w-4" /></Button></Hint>
-        <Button variant="ghost" size="sm" onClick={onReadSelection} disabled={!controller.supported} title="Lee el texto seleccionado en el documento"><ScanText className="h-4 w-4" />Selección</Button>
-        {controller.status === 'completed' && <Button variant="ghost" size="sm" onClick={() => controller.play()}><RotateCcw className="h-4 w-4" />Repetir</Button>}
+        <Hint label={selectionLength ? `Leer únicamente los ${selectionLength} caracteres seleccionados` : 'Primero selecciona texto en el documento; después pulsa este botón'}>
+          <Button variant={selectionLength ? 'secondary' : 'ghost'} size="sm" onMouseDown={(event) => event.preventDefault()} onClick={onReadSelection} disabled={!controller.supported} aria-label="Leer selección"><ScanText className="h-4 w-4" />Leer selección{selectionLength > 0 && <span className="rounded bg-background/70 px-1 text-[10px] tabular-nums">{selectionLength}</span>}</Button>
+        </Hint>
+        {controller.status === 'completed' && <Button variant="ghost" size="sm" onClick={controller.replay}><RotateCcw className="h-4 w-4" />Repetir</Button>}
         <div className="mx-1 hidden h-5 w-px bg-border sm:block" />
         <SelectField
           aria-label="Voz de lectura"

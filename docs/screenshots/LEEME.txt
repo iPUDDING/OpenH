@@ -21,9 +21,11 @@ MEJORAS VERIFICADAS (carpeta mejoras/)
 09-busqueda-pdf.png           PDF real, coincidencia resaltada y salto a página 2.
 10-busqueda-markmap.png       Tema activo, contador y centrado en el mapa.
 11-pronunciacion-ajustes.png  Lectura accesible y regla de pronunciación TTS.
+12-barra-superior-oculta.png   Área ampliada y botón para recuperar la barra.
+13-leer-seleccion.png         Texto seleccionado y contador en Leer selección.
 
-Las cinco capturas de mejoras se repitieron después de la build final mediante
-verify-improvements.mjs. El E2E terminó con errors: [].
+Las capturas 07–11 se generan con verify-improvements.mjs y las capturas 12–13
+con verify-usability.mjs. Ambos E2E terminaron con errors: [].
 
 El ejecutable Windows utiliza este mismo frontend dentro de Microsoft
 WebView2. La barra de título de Windows, los diálogos de archivos, la ventana

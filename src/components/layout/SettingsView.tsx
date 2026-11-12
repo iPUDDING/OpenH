@@ -115,7 +115,7 @@ export default function SettingsView() {
 
           <SettingsCard title="Atajos de teclado" description="Trabaja sin quitar las manos del teclado.">
             <div className="grid gap-3 text-sm sm:grid-cols-2">
-              {[['Ctrl + K', 'Paleta de comandos'], ['Alt + 1…4', 'Cambiar de herramienta'], ['Ctrl + O', 'Abrir documento'], ['Ctrl + F / Ctrl + G', 'Buscar / siguiente en PDF y mapas'], ['Ctrl + rueda', 'Zoom en el mapa'], ['Inicio / Fin / N / P', 'Navegar páginas PDF']].map(([keys, description]) => <div key={keys} className="flex items-center justify-between gap-3 rounded-md bg-muted/50 px-3 py-2"><span className="text-xs text-muted-foreground">{description}</span><kbd className="whitespace-nowrap rounded border bg-background px-2 py-1 font-mono text-[10px]"><Keyboard className="mr-1 inline h-3 w-3" />{keys}</kbd></div>)}
+              {[['Ctrl + K', 'Paleta de comandos'], ['Alt + 1…4', 'Cambiar de herramienta'], ['Ctrl + O', 'Abrir documento'], ['Ctrl + Shift + H', 'Mostrar / ocultar barra superior'], ['Ctrl + F / Ctrl + G', 'Buscar / siguiente en PDF y mapas'], ['Ctrl + rueda', 'Zoom en el mapa'], ['Inicio / Fin / N / P', 'Navegar páginas PDF']].map(([keys, description]) => <div key={keys} className="flex items-center justify-between gap-3 rounded-md bg-muted/50 px-3 py-2"><span className="text-xs text-muted-foreground">{description}</span><kbd className="whitespace-nowrap rounded border bg-background px-2 py-1 font-mono text-[10px]"><Keyboard className="mr-1 inline h-3 w-3" />{keys}</kbd></div>)}
             </div>
           </SettingsCard>
 

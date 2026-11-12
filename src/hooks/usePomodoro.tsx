@@ -29,9 +29,9 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
   const endAtRef = useRef(0);
   const totalSeconds = (mode === 'work' ? settings.workMinutes : settings.breakMinutes) * 60;
 
-  const switchMode = useCallback((current: PomodoroMode, keepRunning: boolean) => {
+  const switchMode = useCallback((current: PomodoroMode, keepRunning: boolean, countCompletion = true) => {
     const next = current === 'work' ? 'break' : 'work';
-    if (current === 'work') setCompletedSessions((count) => count + 1);
+    if (current === 'work' && countCompletion) setCompletedSessions((count) => count + 1);
     const nextSeconds = (next === 'work' ? settings.workMinutes : settings.breakMinutes) * 60;
     setMode(next);
     setSecondsLeft(nextSeconds);
@@ -40,10 +40,12 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
   }, [settings.breakMinutes, settings.workMinutes]);
 
   useEffect(() => {
-    if (!running) {
-      setSecondsLeft((mode === 'work' ? settings.workMinutes : settings.breakMinutes) * 60);
-    }
-  }, [mode, running, settings.breakMinutes, settings.workMinutes]);
+    // Solo un cambio de configuración reinicia la sesión; pausar conserva el tiempo.
+    setRunning(false);
+    setSecondsLeft((mode === 'work' ? settings.workMinutes : settings.breakMinutes) * 60);
+    // mode se lee del render en el que cambia la configuración; switchMode controla sus cambios.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.breakMinutes, settings.workMinutes]);
 
   useEffect(() => {
     if (!running) return;
@@ -66,7 +68,7 @@ export function PomodoroProvider({ children }: { children: ReactNode }) {
     if (running) pause();
     else start();
   }, [pause, running, start]);
-  const skip = useCallback(() => switchMode(mode, false), [mode, switchMode]);
+  const skip = useCallback(() => switchMode(mode, false, false), [mode, switchMode]);
   const reset = useCallback(() => {
     setRunning(false);
     setSecondsLeft((mode === 'work' ? settings.workMinutes : settings.breakMinutes) * 60);

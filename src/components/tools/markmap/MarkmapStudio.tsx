@@ -49,10 +49,15 @@ export default function MarkmapStudio() {
         setSearchOpen(true);
         window.setTimeout(() => searchInputRef.current?.focus(), 30);
       }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLocaleLowerCase() === 'g') {
+        event.preventDefault();
+        setSearchOpen(true);
+        setSearchIndex((index) => searchTotal ? (index + (event.shiftKey ? -1 : 1) + searchTotal) % searchTotal : 0);
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [searchTotal]);
 
   const goToSearchResult = (direction: number) => {
     if (!searchTotal) return;
@@ -64,15 +69,21 @@ export default function MarkmapStudio() {
     setExporting(true);
     try {
       const base = exportBaseName(content.split('\n')[0].replace(/^#+\s*/, '') || 'mapa-mental');
+      let saved: boolean | null = true;
       if (kind === 'md') {
-        await files.saveFile(content, { suggestedName: `${base}.md`, extensions: ['md'], filterName: 'Markdown' });
+        saved = await files.saveFile(content, { suggestedName: `${base}.md`, extensions: ['md'], filterName: 'Markdown' });
       } else {
         if (!svgRef.current) throw new Error('El mapa todavía no está listo.');
         const svg = serializeMarkmapSvg(svgRef.current, dark);
-        if (kind === 'svg') await files.saveFile(svg, { suggestedName: `${base}.svg`, extensions: ['svg'], filterName: 'SVG' });
-        if (kind === 'html') await files.saveFile(createInteractiveHtml(base, svg, dark), { suggestedName: `${base}.html`, extensions: ['html'], filterName: 'HTML interactivo' });
-        if (kind === 'png') await files.saveFile(await svgToPng(svg), { suggestedName: `${base}.png`, extensions: ['png'], filterName: 'Imagen PNG' });
+        if (kind === 'svg') saved = await files.saveFile(svg, { suggestedName: `${base}.svg`, extensions: ['svg'], filterName: 'SVG' });
+        if (kind === 'html') saved = await files.saveFile(createInteractiveHtml(base, svg, dark), { suggestedName: `${base}.html`, extensions: ['html'], filterName: 'HTML interactivo' });
+        if (kind === 'png') saved = await files.saveFile(await svgToPng(svg), { suggestedName: `${base}.png`, extensions: ['png'], filterName: 'Imagen PNG' });
         if (kind === 'pdf') printMarkmap(base, svg);
+      }
+      if (saved === null) return; // useFileSystem ya expone el error concreto.
+      if (!saved) {
+        setMessage('Exportación cancelada. No se realizaron cambios.');
+        return;
       }
       setMessage(kind === 'pdf' ? 'Vista de impresión abierta. Selecciona “Microsoft Print to PDF”.' : 'Exportación completada.');
     } catch (error) {
@@ -130,7 +141,7 @@ export default function MarkmapStudio() {
             <div className="min-h-0 flex-1"><MarkmapEditor value={content} onChange={setContent} /></div>
           </div>
         )}
-        <MarkmapCanvas ref={svgRef} content={content} controlsRef={controlsRef} searchQuery={searchQuery} activeSearchIndex={searchIndex} onSearchMatches={onSearchMatches} />
+        <MarkmapCanvas ref={svgRef} content={content} controlsRef={controlsRef} searchQuery={searchOpen ? searchQuery : ''} activeSearchIndex={searchIndex} onSearchMatches={onSearchMatches} />
       </div>
       {exporting && <div className="pointer-events-none fixed bottom-5 right-5 rounded-lg bg-foreground px-4 py-2 text-xs text-background shadow-lg">Preparando exportación…</div>}
     </section>

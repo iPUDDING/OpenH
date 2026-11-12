@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react';
 import packageMetadata from '../../package.json';
 
-/** La versión web es la del paquete; en escritorio refleja el bundle Tauri compilado por CI. */
+export function resolvePackageVersion(metadata: Record<string, unknown>): string {
+  return typeof metadata.version === 'string' && metadata.version.trim() ? metadata.version : '1.0.0';
+}
+
+const packageVersion = resolvePackageVersion(packageMetadata);
+
+/** La versión web usa el paquete; en escritorio refleja el bundle Tauri compilado por CI. */
 export function useAppVersion(): string {
-  const [version, setVersion] = useState(packageMetadata.version);
+  const [version, setVersion] = useState(packageVersion);
   useEffect(() => {
     if (!('__TAURI_INTERNALS__' in window)) return;
     let mounted = true;

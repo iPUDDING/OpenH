@@ -7,7 +7,7 @@
 | Comprobación | Resultado |
 |---|---|
 | `npm run typecheck` | Correcto, sin errores TypeScript. |
-| `npm test` | 5 archivos; **19/19 pruebas unitarias** superadas. |
+| `npm test` | 6 archivos; **22/22 pruebas unitarias** superadas. |
 | `npm run build` | Build Vite de producción correcto; **2413 módulos** transformados. |
 | `npm audit --omit=dev --audit-level=low` | **0 vulnerabilidades** en dependencias de producción. |
 | `node verify-improvements.mjs` | **7 comprobaciones** funcionales superadas; **`errors: []`**. |
@@ -61,6 +61,7 @@ Capturas finales: `docs/screenshots/mejoras/07-…` hasta `15-…`.
 - La búsqueda DOM podía limitarse al primer bloque; ahora recorre todos los segmentos hasta el límite global de 500 coincidencias.
 - Se endurecieron nombres reservados de Windows, progreso no finito, índice activo, Pomodoro, paleta y foco del actualizador.
 - Restaurar una copia cancela cualquier voz activa antes de reemplazar el estado.
+- La compilación dentro de `tauri-action` podía recibir un `package.json` sin `version`; `useAppVersion` ahora tolera metadatos incompletos y conserva `getVersion()` como fuente real en Windows. Se verificó `npm run build` con la propiedad eliminada temporalmente y se restauró el archivo después.
 
 ## Alcance y límites
 

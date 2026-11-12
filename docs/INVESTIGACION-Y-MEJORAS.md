@@ -29,7 +29,7 @@
 | Búsqueda Markmap | Consulta normalizada, siguiente/anterior, foco y centrado. | E2E con plantilla de proyecto, una coincidencia y atributo activo en DOM. |
 | Backup/restauración | JSON versionado, exportación nativa/descarga y límite de importación de 5 MB. | E2E descarga y valida JSON; pruebas de esquema, límites, recientes y reglas. |
 | Pomodoro superpuesto y alarmas | Portal a `document.body`, posición adaptada al viewport, cierre al ocultarse su herramienta y Web Audio local con melodías distintas para enfoque/descanso. | E2E pulsa los controles en Visor/TTS/Mapas, comprueba el elemento superior y recorre ambos vencimientos; AudioContext se simula solo en QA para inspeccionar las notas. |
-| Robustez de texto y datos | Rangos Unicode exactos, borradores vacíos, backups parciales no destructivos y nombres seguros para Windows. | 19 pruebas unitarias, incluidos coreano, acentos descompuestos, emojis y dispositivos reservados. |
+| Robustez de texto y datos | Rangos Unicode exactos, borradores vacíos, backups parciales no destructivos, nombres seguros para Windows y versión tolerante a metadatos incompletos en CI. | 22 pruebas unitarias, incluidos coreano, acentos descompuestos, emojis, dispositivos reservados y `package.json` sin `version`. |
 
 ## Decisiones deliberadas
 

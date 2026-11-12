@@ -1,0 +1,31 @@
+OPENHUB 1.0.0 — CAPTURAS REALES
+================================
+
+Estas imágenes fueron capturadas directamente del build de producción de
+OpenHub ejecutado en Chromium mediante Playwright. No son mockups, renders
+conceptuales ni imágenes generadas por IA.
+
+Resolución de cada captura individual: 1440 x 900 píxeles.
+
+01-inicio.png                 Pantalla inicial y entrada de Markdown.
+02-visor-markdown.png         Documento Markdown renderizado y barra TTS.
+03-estudio-tts.png            Editor, vista de lectura y controles de voz.
+04-mapas-mentales.png         CodeMirror y mapa Markmap interactivo.
+05-ajustes.png                Apariencia, Pomodoro y privacidad.
+06-mapa-modo-oscuro.png       Editor y mapa con tema oscuro aplicado.
+00-vista-general.png          Lámina compuesta a partir de las seis capturas.
+
+MEJORAS VERIFICADAS (carpeta mejoras/)
+07-paleta-comandos.png        Ctrl+K, búsqueda y ejecución de comandos.
+08-indice-lectura.png         Índice Markdown navegable con cuatro secciones.
+09-busqueda-pdf.png           PDF real, coincidencia resaltada y salto a página 2.
+10-busqueda-markmap.png       Tema activo, contador y centrado en el mapa.
+11-pronunciacion-ajustes.png  Lectura accesible y regla de pronunciación TTS.
+
+Las cinco capturas de mejoras se repitieron después de la build final mediante
+verify-improvements.mjs. El E2E terminó con errors: [].
+
+El ejecutable Windows utiliza este mismo frontend dentro de Microsoft
+WebView2. La barra de título de Windows, los diálogos de archivos, la ventana
+de impresión y las voces disponibles dependen del sistema y no forman parte
+de estas capturas del contenido de la aplicación.

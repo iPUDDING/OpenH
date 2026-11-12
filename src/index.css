@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 24% 98%;
+    --foreground: 224 32% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 32% 13%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 18% 92%;
+    --secondary-foreground: 224 25% 22%;
+    --muted: 220 18% 94%;
+    --muted-foreground: 220 10% 43%;
+    --accent: 220 22% 93%;
+    --accent-foreground: 224 32% 15%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 17% 86%;
+    --input: 220 17% 82%;
+    --ring: 221 83% 53%;
+    --radius: 0.65rem;
+  }
+  .dark {
+    --background: 224 32% 9%;
+    --foreground: 220 20% 94%;
+    --card: 224 27% 13%;
+    --card-foreground: 220 20% 94%;
+    --primary: 217 91% 64%;
+    --primary-foreground: 224 45% 10%;
+    --secondary: 222 20% 20%;
+    --secondary-foreground: 220 18% 90%;
+    --muted: 222 20% 17%;
+    --muted-foreground: 220 12% 66%;
+    --accent: 222 22% 21%;
+    --accent-foreground: 220 20% 96%;
+    --destructive: 0 63% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 18% 25%;
+    --input: 222 18% 30%;
+    --ring: 217 91% 64%;
+  }
+  * { @apply border-border; }
+  html, body, #root { height: 100%; }
+  html { color-scheme: light; }
+  html.dark { color-scheme: dark; }
+  body {
+    @apply m-0 overflow-hidden bg-background text-foreground antialiased;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  button, a, input, textarea, [role="button"] { -webkit-tap-highlight-color: transparent; }
+  ::selection { background: hsl(var(--primary) / .25); }
+  * { scrollbar-width: thin; scrollbar-color: hsl(var(--muted-foreground) / .35) transparent; }
+  *::-webkit-scrollbar { width: 9px; height: 9px; }
+  *::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / .3); border: 2px solid transparent; border-radius: 999px; background-clip: padding-box; }
+}
+
+/* Resaltado no destructivo: no altera el DOM ni invalida los offsets de voz. */
+::highlight(openhub-word) { background-color: #fbbf24; color: #1e293b; }
+::highlight(openhub-phrase) { background-color: rgb(96 165 250 / .13); }
+::highlight(openhub-search) { background-color: rgb(250 204 21 / .35); }
+::highlight(openhub-search-current) { background-color: #f97316; color: #fff; }
+.openhub-highlight-root { position: relative; }
+.openhub-highlight-overlay { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.openhub-fallback-word, .openhub-fallback-phrase { position: absolute; margin: 0; padding: 0; border-radius: 2px; }
+.openhub-fallback-word { background: #fbbf24; opacity: .65; }
+.openhub-fallback-phrase { background: #60a5fa; opacity: .13; }
+.openhub-fallback-search { background: #facc15; opacity: .35; }
+.openhub-fallback-search-current { background: #f97316; opacity: .7; }
+[data-openhub-phrase] { background: rgb(96 165 250 / .1); border-radius: .3rem; }
+.tts-active-word { @apply rounded-sm bg-amber-300 px-0.5 text-slate-900; }
+.tts-active-paragraph { background: hsl(var(--primary) / .06); box-shadow: -3px 0 0 hsl(var(--primary)); }
+
+.markdown-body { @apply mx-auto w-full max-w-3xl px-6 py-8 text-[15px] leading-7 text-foreground md:px-10 md:text-base; }
+.markdown-body > :first-child { margin-top: 0; }
+.markdown-body h1 { @apply mb-5 mt-8 border-b pb-3 text-3xl font-bold tracking-tight; }
+.markdown-body h2 { @apply mb-4 mt-8 text-2xl font-semibold tracking-tight; }
+.markdown-body h3 { @apply mb-3 mt-6 text-xl font-semibold; }
+.markdown-body h4 { @apply mb-2 mt-5 text-lg font-semibold; }
+.markdown-body p { @apply my-4; }
+.markdown-body a { @apply font-medium text-primary underline underline-offset-4; }
+.markdown-body ul { @apply my-4 list-disc pl-7; }
+.markdown-body ol { @apply my-4 list-decimal pl-7; }
+.markdown-body li { @apply my-1.5; }
+.markdown-body blockquote { @apply my-5 border-l-4 border-primary/50 pl-4 italic text-muted-foreground; }
+.markdown-body pre { @apply my-5 overflow-x-auto rounded-lg border bg-slate-950 p-4 text-sm leading-6 text-slate-100; }
+.markdown-body code { @apply rounded bg-secondary px-1.5 py-0.5 font-mono text-[.88em]; }
+.markdown-body pre code { @apply bg-transparent p-0 text-inherit; }
+.markdown-body table { @apply my-5 w-full border-collapse text-sm; }
+.markdown-body th, .markdown-body td { @apply border px-3 py-2 text-left; }
+.markdown-body th { @apply bg-secondary font-semibold; }
+.markdown-body img { @apply mx-auto my-5 max-w-full rounded-lg; }
+.markdown-body hr { @apply my-8; }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-name { color: #c084fc; }
+.hljs-string, .hljs-attr, .hljs-template-tag { color: #86efac; }
+.hljs-number, .hljs-symbol { color: #fdba74; }
+.hljs-comment, .hljs-quote { color: #94a3b8; font-style: italic; }
+.hljs-title, .hljs-function { color: #93c5fd; }
+
+.cm-editor { height: 100%; font-size: 14px; background: hsl(var(--card)); color: hsl(var(--foreground)); }
+.cm-editor.cm-focused { outline: none; }
+.cm-scroller { font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace; line-height: 1.65; }
+.cm-gutters { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); border-right: 1px solid hsl(var(--border)); }
+.cm-activeLine { background: hsl(var(--accent) / .45); }
+.cm-activeLineGutter { background: hsl(var(--accent)); }
+.markmap-svg { width: 100%; height: 100%; display: block; touch-action: none; }
+.dark .markmap-svg text { fill: #f1f5f9 !important; }
+.dark .markmap-svg path, .dark .markmap-svg line { stroke: #94a3b8; }
+.dark .markmap-svg foreignObject { color: #f1f5f9; }
+[data-markmap-search="match"] > text, [data-markmap-search="match"] > foreignObject { font-weight: 700; text-decoration: underline; }
+[data-markmap-search="current"] > circle { fill: #f59e0b !important; stroke: #fff; stroke-width: 2; }
+[data-markmap-search="current"] { filter: drop-shadow(0 0 5px rgb(245 158 11 / .75)); }
+
+.pdf-text-layer { position: absolute; inset: 0; overflow: hidden; line-height: 1; z-index: 2; }
+.pdf-text-layer span { position: absolute; white-space: pre; color: transparent; cursor: text; transform-origin: 0 0; }
+.pdf-text-layer ::selection { background: rgb(59 130 246 / .35); color: transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+@media print {
+  body { overflow: visible; background: white; }
+}

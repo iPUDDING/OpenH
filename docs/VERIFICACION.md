@@ -1,4 +1,4 @@
-# Informe de verificación — OpenHub 1.0.5
+# Informe de verificación — OpenHub 1.0.7
 
 **Fecha:** 11 de noviembre de 2026.
 
@@ -7,16 +7,17 @@
 | Comprobación | Resultado |
 |---|---|
 | `npm run typecheck` | Correcto, sin errores TypeScript. |
-| `npm test` | 6 archivos; **22/22 pruebas unitarias** superadas. |
+| `npm test` | 6 archivos; **27/27 pruebas unitarias** superadas. |
 | `npm run build` | Build Vite de producción correcto; **2414 módulos** transformados. |
 | `npm audit --omit=dev --audit-level=low` | **0 vulnerabilidades** en dependencias de producción. |
 | `node verify-improvements.mjs` | **7 comprobaciones** funcionales superadas; **`errors: []`**. |
 | `node verify-usability.mjs` | **14 comprobaciones** de usabilidad superadas; **`errors: []`**. |
 | `node verify-updater.mjs` | **8 comprobaciones** del actualizador superadas; **`errors: []`**. |
 | `node verify-pomodoro.mjs` | **6 comprobaciones** de apilamiento, clics y alarmas superadas; **`errors: []`**. |
-| `node verify-navigation.mjs` | **9 comprobaciones** de identidad, Recientes y pantalla completa superadas; **`errors: []`**. |
+| `node verify-navigation.mjs` | **10 comprobaciones** de identidad, Recientes y pantalla completa (`F11` global) superadas; **`errors: []`**. |
+| `node verify-viewer-features.mjs` | **13 comprobaciones** de zoom con scroll, renombrado, subrayado de títulos/subtítulos y atajo `Espacio` superadas; **`errors: []`**. |
 
-Total de navegador: **44/44 comprobaciones** sobre el frontend de producción servido en el puerto 1420 mediante Chromium/Playwright. No se modifica la interfaz distribuida para aparentar resultados.
+Total de navegador: **58/58 comprobaciones** sobre el frontend de producción servido en el puerto 1420 mediante Chromium/Playwright. No se modifica la interfaz distribuida para aparentar resultados.
 
 ## E2E general
 
@@ -53,11 +54,29 @@ Para recorrer los vencimientos sin esperar 30 minutos, la prueba configura sesio
 
 `verify-navigation.mjs` crea dos borradores con nombres únicos, comprueba que el segundo no sobrescribe el primero, recupera su contenido desde Recientes y abre un Markdown real mediante el selector de archivos. Después entra y sale de pantalla completa con el botón y con `F11`.
 
-En una segunda página aislada simula únicamente el IPC de Tauri para comprobar `isFullscreen`, `setFullscreen(true/false)` y la sincronización cuando la ventana cambia externamente. La versión web utiliza la Fullscreen API real de Chromium, no un doble.
+En una segunda página aislada simula únicamente el IPC de Tauri para comprobar `isFullscreen`, `setFullscreen(true/false)`, la sincronización cuando la ventana cambia externamente y que `F11` continúa alternando pantalla completa incluso cuando la barra superior está oculta. La versión web utiliza la Fullscreen API real de Chromium, no un doble.
 
-Capturas finales: `docs/screenshots/mejoras/07-…` hasta `17-…`.
+## E2E de zoom con scroll, renombrado, subrayado de títulos y atajo Espacio
+
+`verify-viewer-features.mjs` verifica el visor sobre Markdown, editor dividido, PDF, archivos con ruta local simulada y lectura TTS en Visor y Estudio TTS:
+
+1. La rueda normal sin `Ctrl` sigue desplazando el documento Markdown verticalmente sin alterar el zoom.
+2. `Ctrl + rueda` acerca y aleja Markdown proporcionalmente sin desbordar horizontalmente la columna de lectura, y `Ctrl + 0` o los botones `− / % / +` controlan y restablecen el `100%`.
+3. En vista dividida, `Ctrl + rueda` escala también el editor Markdown.
+4. En PDF, `Ctrl + rueda` acerca y aleja la página y `Ctrl + 0` restablece al `100%`.
+5. Hacer clic sobre el nombre en la barra superior permite renombrar el documento (`Enter` guarda y `Escape` cancela) sin colisiones con borradores posteriores.
+6. Renombrar desde el menú lateral (`Recientes` vía botón de lápiz o doble clic) actualiza la lista sin interrumpir otro documento abierto y sincroniza la barra superior cuando corresponde al documento activo.
+7. En archivos con ruta real en Windows, renombrar cambia únicamente el título visible dentro de OpenHub (conservando la ruta real sin emitir comandos de renombrado en disco) y persiste al reabrir desde Recientes y al recargar.
+8. El subrayado TTS mediante `CSS.highlights` (`openhub-word` y `openhub-phrase`) permanece conectado y resalta exactamente palabras dentro de títulos (`h1`), subtítulos (`h2`/`h3`) y nodos con enlaces o negrita.
+9. Pulsar `Espacio` pausa y reanuda la lectura tanto en el Visor como en Estudio TTS (incluso con el foco en controles TTS o tras pulsar un párrafo), mientras sigue escribiendo espacios normalmente dentro del editor Markdown.
+
+Capturas finales: `docs/screenshots/mejoras/07-…` hasta `20-…`.
 
 ## Errores corregidos en esta ronda
+
+- El resaltado TTS en títulos y subtítulos Markdown (`h1`–`h6`) y enlaces podía quedar desconectado al re-renderizar porque los wrappers inline en `ReactMarkdown` desmontaban esos nodos DOM y dejaban huérfanas las referencias guardadas en `DocumentTextMap`; ahora los encabezados nativos y `MarkdownLink` mantienen nodos estables y asignan IDs tras el commit en `useLayoutEffect`.
+- `F11` ahora se escucha en fase de captura desde la raíz de la aplicación (`App.tsx` + `useFullscreen.ts`), de modo que funciona siempre incluso cuando la barra superior está oculta o en cualquier vista, y es invocable también desde la paleta `Ctrl+K`.
+- Se añadió el atajo global contextual `Espacio` (`useSpeechSpaceShortcut`) en Visor y Estudio TTS para pausar/reanudar/detener la lectura activa sin interferir con editores, entradas, deslizadores, diálogos o Pomodoro.
 
 - El panel Pomodoro podía quedar tapado por otros elementos: ahora usa un portal, z-index superior, posición adaptada al viewport y cierre al ocultarse su herramienta.
 - No existía aviso sonoro al finalizar: ahora hay dos melodías Web Audio locales, desbloqueadas al pulsar Iniciar y aisladas de errores del dispositivo.

@@ -30,4 +30,12 @@ describe('copia de seguridad local', () => {
     useAppStore.setState(current);
     expect(parseWorkspaceBackup(backup({ readerFontSize: 120 }))).toMatchObject({ ...current, readerFontSize: 120 });
   });
+  it('normaliza viewerZoom y conserva nombres personalizados en recientes', () => {
+    const result = parseWorkspaceBackup(backup({
+      viewerZoom: 9,
+      recents: [{ id: 'C:\\docs\\a.md', path: 'C:\\docs\\a.md', name: 'Mi alias', kind: 'markdown', customName: true, openedAt: 99 }],
+    }));
+    expect(result.viewerZoom).toBe(3);
+    expect(result.recents[0]).toMatchObject({ name: 'Mi alias', customName: true, path: 'C:\\docs\\a.md' });
+  });
 });

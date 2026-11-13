@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { createPortal } from 'react-dom';
-import { AudioLines, BrainCircuit, Clock3, FileText, FolderOpen, Moon, PanelLeft, PanelTopClose, Play, Search, Settings, SkipForward, Sun } from 'lucide-react';
+import { AudioLines, BrainCircuit, Clock3, FileText, FolderOpen, Maximize, Minimize, Moon, PanelLeft, PanelTopClose, Play, Search, Settings, SkipForward, Sun } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 import { useAppStore } from '@/store/useAppStore';
 import { usePomodoro } from '@/hooks/usePomodoro';
@@ -16,7 +16,7 @@ interface Command {
   action: () => void;
 }
 
-export function CommandPalette({ open, onClose, onToggleSidebar, onToggleHeader }: { open: boolean; onClose: () => void; onToggleSidebar: () => void; onToggleHeader: () => void }) {
+export function CommandPalette({ open, onClose, onToggleSidebar, onToggleHeader, onToggleFullscreen, fullscreen = false }: { open: boolean; onClose: () => void; onToggleSidebar: () => void; onToggleHeader: () => void; onToggleFullscreen: () => void; fullscreen?: boolean }) {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -40,6 +40,7 @@ export function CommandPalette({ open, onClose, onToggleSidebar, onToggleHeader 
       { id: 'theme', title: theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro', detail: 'Alternar apariencia', keywords: 'tema oscuro claro apariencia', icon: theme === 'dark' ? Sun : Moon, action: () => setTheme(theme === 'dark' ? 'light' : 'dark') },
       { id: 'sidebar', title: 'Mostrar u ocultar barra lateral', detail: 'Ampliar el área de trabajo', keywords: 'panel navegacion sidebar', icon: PanelLeft, action: onToggleSidebar },
       { id: 'header', title: 'Mostrar u ocultar barra superior', detail: 'Ctrl+Shift+H · Maximizar el área de lectura', keywords: 'panel superior header ocultar mostrar', icon: PanelTopClose, action: onToggleHeader },
+      { id: 'fullscreen', title: fullscreen ? 'Salir de pantalla completa' : 'Pantalla completa', detail: 'F11 · Alternar pantalla completa', keywords: 'f11 fullscreen ventana maximizar', icon: fullscreen ? Minimize : Maximize, action: onToggleFullscreen },
       { id: 'pomodoro', title: pomodoro.running ? 'Pausar Pomodoro' : 'Iniciar Pomodoro', detail: 'Controlar la sesión actual', keywords: 'timer enfoque descanso', icon: Play, action: pomodoro.toggle },
       { id: 'skip', title: 'Saltar a la siguiente sesión', detail: 'Trabajo ↔ descanso', keywords: 'pomodoro saltar break', icon: SkipForward, action: pomodoro.skip },
       ...recents.map((recent): Command => ({
@@ -51,7 +52,7 @@ export function CommandPalette({ open, onClose, onToggleSidebar, onToggleHeader 
         action: () => { setActiveTool('viewer'); window.dispatchEvent(new CustomEvent('openhub:recent', { detail: recent })); },
       })),
     ];
-  }, [onToggleHeader, onToggleSidebar, pomodoro, recents, setActiveTool, setTheme, theme]);
+  }, [fullscreen, onToggleFullscreen, onToggleHeader, onToggleSidebar, pomodoro, recents, setActiveTool, setTheme, theme]);
 
   const filtered = useMemo(() => {
     const terms = normalizeSearchText(query).split(/\s+/).filter(Boolean);

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { AudioLines, Pause, Play, SkipBack, SkipForward, Square, Trash2, Volume2 } from 'lucide-react';
-import { useTts } from '@/hooks/useTts';
+import { useSpeechSpaceShortcut, useTts } from '@/hooks/useTts';
 import { useAppStore } from '@/store/useAppStore';
 import { countWords, extractWordRanges, splitParagraphs } from '@/lib/text';
 import { formatDuration } from '@/lib/utils';
@@ -24,7 +24,9 @@ export default function TtsStudio() {
   const sourceSegments = useMemo(() => splitParagraphs(text), [text]);
   const segments = useMemo(() => prepareSpeechSegments(sourceSegments, pronunciationRules), [sourceSegments, pronunciationRules]);
   const controller = useTts(segments);
+  const sectionRef = useRef<HTMLElement>(null);
   const readingRef = useRef<HTMLDivElement>(null);
+  useSpeechSpaceShortcut(sectionRef, controller);
   const active = controller.status === 'speaking' || controller.status === 'paused' || controller.status === 'loading';
 
   useEffect(() => {
@@ -38,7 +40,7 @@ export default function TtsStudio() {
   ];
 
   return (
-    <section className="flex h-full min-h-0 flex-col" aria-label="Estudio de texto a voz">
+    <section ref={sectionRef} className="flex h-full min-h-0 flex-col" aria-label="Estudio de texto a voz">
       <header className="flex min-h-14 flex-wrap items-center gap-2 border-b bg-card px-4 py-2">
         <div className="rounded-lg bg-violet-500/10 p-2 text-violet-500"><AudioLines className="h-5 w-5" /></div>
         <div>
@@ -55,11 +57,11 @@ export default function TtsStudio() {
       <div className="border-b bg-card/70 px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
           {controller.status === 'speaking' ? (
-            <Button onClick={controller.pause}><Pause className="h-4 w-4" />Pausar</Button>
+            <Button data-tts-control="true" onClick={controller.pause}><Pause className="h-4 w-4" />Pausar</Button>
           ) : controller.status === 'paused' ? (
-            <Button onClick={controller.resume}><Play className="h-4 w-4" />Reanudar</Button>
+            <Button data-tts-control="true" onClick={controller.resume}><Play className="h-4 w-4" />Reanudar</Button>
           ) : (
-            <Button onClick={() => controller.play()} disabled={!segments.length || !controller.supported}><Play className="h-4 w-4" />Reproducir</Button>
+            <Button data-tts-control="true" onClick={() => controller.play()} disabled={!segments.length || !controller.supported}><Play className="h-4 w-4" />Reproducir</Button>
           )}
           <Button variant="outline" size="icon" onClick={controller.previous} disabled={!active} aria-label="Párrafo anterior"><SkipBack className="h-4 w-4" /></Button>
           <Button variant="outline" size="icon" onClick={controller.next} disabled={!active} aria-label="Párrafo siguiente"><SkipForward className="h-4 w-4" /></Button>
@@ -92,6 +94,7 @@ export default function TtsStudio() {
                 <button
                   key={segment.id}
                   type="button"
+                  data-tts-control="true"
                   onClick={() => controller.play(index)}
                   className={`block w-full cursor-pointer rounded-r-md px-4 py-3 text-left transition hover:bg-accent/60 ${isActive ? 'tts-active-paragraph' : ''}`}
                   style={{ fontSize: `${readerFontSize / 100}rem`, lineHeight: readerLineHeight }}

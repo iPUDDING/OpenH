@@ -42,6 +42,9 @@ export function PdfRenderer({ data, position, autoScroll, onSegmentsChange }: Pd
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [activeMatch, setActiveMatch] = useState(0);
+  const latestZoomRef = useRef(1.25);
+
+  latestZoomRef.current = fitMode === 'custom' ? scale : renderScale;
 
   useEffect(() => {
     let cancelled = false;
@@ -211,9 +214,29 @@ export function PdfRenderer({ data, position, autoScroll, onSegmentsChange }: Pd
   };
 
   const setZoom = (next: number) => {
+    const clamped = Math.round(clamp(next, 0.5, 3) * 100) / 100;
+    latestZoomRef.current = clamped;
     setFitMode('custom');
-    setScale(clamp(next, 0.5, 3));
+    setScale(clamped);
   };
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      const deltaY = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaMode === 2 ? event.deltaY * 120 : event.deltaY;
+      if (!deltaY) return;
+      const base = latestZoomRef.current;
+      const next = Math.abs(deltaY) >= 40
+        ? Math.round((base + (deltaY < 0 ? 0.1 : -0.1)) * 100) / 100
+        : base * Math.exp(-deltaY * 0.004);
+      setZoom(next);
+    };
+    element.addEventListener('wheel', onWheel, { passive: false });
+    return () => element.removeEventListener('wheel', onWheel);
+  }, []);
 
   useEffect(() => {
     const localIndex = matches[activeMatch]?.page === pageNumber ? matches[activeMatch].localIndex : -1;
@@ -238,9 +261,10 @@ export function PdfRenderer({ data, position, autoScroll, onSegmentsChange }: Pd
         return;
       }
       if (editing) return;
-      if ((event.ctrlKey || event.metaKey) && ['+', '=', '-'].includes(event.key)) {
+      if ((event.ctrlKey || event.metaKey) && ['+', '=', '-', '0'].includes(event.key)) {
         event.preventDefault();
-        setZoom(renderScale + (event.key === '-' ? -0.15 : 0.15));
+        if (event.key === '0') setZoom(1);
+        else setZoom(latestZoomRef.current + (event.key === '-' ? -0.15 : 0.15));
       } else if (event.key === 'PageDown' || event.key.toLocaleLowerCase() === 'n') {
         event.preventDefault();
         setPageNumber((page) => Math.min(engine?.document.numPages ?? 1, page + 1));
@@ -264,9 +288,18 @@ export function PdfRenderer({ data, position, autoScroll, onSegmentsChange }: Pd
         </label>
         <Button variant="ghost" size="icon-sm" onClick={() => setPageNumber((page) => Math.min(engine?.document.numPages ?? 1, page + 1))} disabled={pageNumber >= (engine?.document.numPages ?? 1)} aria-label="Página siguiente"><ChevronRight className="h-4 w-4" /></Button>
         <div className="mx-1 h-5 w-px bg-border" />
-        <Hint label="Alejar"><Button variant="ghost" size="icon-sm" onClick={() => setZoom(renderScale - 0.15)} aria-label="Alejar PDF"><Minus className="h-4 w-4" /></Button></Hint>
-        <span className="w-12 text-center text-xs tabular-nums text-muted-foreground">{Math.round(renderScale * 100)}%</span>
-        <Hint label="Acercar"><Button variant="ghost" size="icon-sm" onClick={() => setZoom(renderScale + 0.15)} aria-label="Acercar PDF"><Plus className="h-4 w-4" /></Button></Hint>
+        <Hint label="Alejar · Ctrl+rueda o Ctrl+−"><Button variant="ghost" size="icon-sm" onClick={() => setZoom(renderScale - 0.15)} aria-label="Alejar PDF"><Minus className="h-4 w-4" /></Button></Hint>
+        <Hint label="Restablecer zoom al 100% · Ctrl+0">
+          <button
+            type="button"
+            onClick={() => setZoom(1)}
+            className="w-12 rounded py-1 text-center text-xs tabular-nums text-muted-foreground transition hover:bg-accent hover:text-foreground"
+            aria-label="Restablecer zoom del PDF"
+          >
+            {Math.round(renderScale * 100)}%
+          </button>
+        </Hint>
+        <Hint label="Acercar · Ctrl+rueda o Ctrl++"><Button variant="ghost" size="icon-sm" onClick={() => setZoom(renderScale + 0.15)} aria-label="Acercar PDF"><Plus className="h-4 w-4" /></Button></Hint>
         <SelectField aria-label="Ajuste del PDF" value={fitMode} onValueChange={(value) => setFitMode(value as FitMode)} options={[{ value: 'width', label: 'Ajustar ancho' }, { value: 'page', label: 'Página completa' }, { value: 'custom', label: 'Zoom manual' }]} className="w-36" />
         <div className="ml-auto flex min-w-56 items-center gap-1">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />

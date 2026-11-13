@@ -29,19 +29,19 @@ export function ReaderToolbar({ controller, onReadSelection, showPomodoro = fals
       <div className="flex flex-wrap items-center gap-1.5">
         <div className="mr-1 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"><Volume2 className="h-4 w-4 text-primary" /> Lectura</div>
         {controller.status === 'speaking' ? (
-          <Button size="sm" onClick={controller.pause}><Pause className="h-4 w-4" />Pausar</Button>
+          <Button size="sm" data-tts-control="true" onClick={controller.pause} title="Pausar lectura · Espacio"><Pause className="h-4 w-4" />Pausar</Button>
         ) : controller.status === 'paused' ? (
-          <Button size="sm" onClick={controller.resume}><Play className="h-4 w-4" />Reanudar</Button>
+          <Button size="sm" data-tts-control="true" onClick={controller.resume} title="Reanudar lectura · Espacio"><Play className="h-4 w-4" />Reanudar</Button>
         ) : (
-          <Button size="sm" onClick={() => controller.play()} disabled={!controller.supported}><Play className="h-4 w-4" />Leer</Button>
+          <Button size="sm" data-tts-control="true" onClick={() => controller.play()} disabled={!controller.supported}><Play className="h-4 w-4" />Leer</Button>
         )}
         <Hint label="Párrafo anterior"><Button variant="ghost" size="icon-sm" onClick={controller.previous} disabled={!active} aria-label="Párrafo anterior"><SkipBack className="h-4 w-4" /></Button></Hint>
         <Hint label="Párrafo siguiente"><Button variant="ghost" size="icon-sm" onClick={controller.next} disabled={!active} aria-label="Párrafo siguiente"><SkipForward className="h-4 w-4" /></Button></Hint>
         <Hint label="Detener"><Button variant="ghost" size="icon-sm" onClick={controller.stop} disabled={!active && controller.status !== 'completed'} aria-label="Detener lectura"><Square className="h-4 w-4" /></Button></Hint>
         <Hint label={selectionLength ? `Leer únicamente los ${selectionLength} caracteres seleccionados` : 'Primero selecciona texto en el documento; después pulsa este botón'}>
-          <Button variant={selectionLength ? 'secondary' : 'ghost'} size="sm" onMouseDown={(event) => event.preventDefault()} onClick={onReadSelection} disabled={!controller.supported} aria-label="Leer selección"><ScanText className="h-4 w-4" />Leer selección{selectionLength > 0 && <span className="rounded bg-background/70 px-1 text-[10px] tabular-nums">{selectionLength}</span>}</Button>
+          <Button variant={selectionLength ? 'secondary' : 'ghost'} size="sm" data-tts-control="true" onMouseDown={(event) => event.preventDefault()} onClick={onReadSelection} disabled={!controller.supported} aria-label="Leer selección"><ScanText className="h-4 w-4" />Leer selección{selectionLength > 0 && <span className="rounded bg-background/70 px-1 text-[10px] tabular-nums">{selectionLength}</span>}</Button>
         </Hint>
-        {controller.status === 'completed' && <Button variant="ghost" size="sm" onClick={controller.replay}><RotateCcw className="h-4 w-4" />Repetir</Button>}
+        {controller.status === 'completed' && <Button variant="ghost" size="sm" data-tts-control="true" onClick={controller.replay}><RotateCcw className="h-4 w-4" />Repetir</Button>}
         <div className="mx-1 hidden h-5 w-px bg-border sm:block" />
         <SelectField
           aria-label="Voz de lectura"

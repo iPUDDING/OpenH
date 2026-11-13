@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { countWords, estimateSeconds, extractWordRanges, findWordAt } from '@/lib/text';
 import { cancelSpeech, createUtterance, loadVoices, speechSupported } from '@/services/ttsService';
@@ -268,6 +268,46 @@ export function useTts(segments: SpeechSegment[]): TtsController {
     next,
     previous,
   };
+}
+
+export function useSpeechSpaceShortcut(
+  containerRef: RefObject<HTMLElement | null>,
+  controller: Pick<TtsController, 'status' | 'pause' | 'resume' | 'stop'>,
+) {
+  const suppressKeyUpRef = useRef(false);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.code !== 'Space' && event.key !== ' ') || event.repeat) return;
+      if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+      if (!containerRef.current?.offsetParent) return;
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+      if (controller.status !== 'speaking' && controller.status !== 'loading' && controller.status !== 'paused') return;
+
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"], .cm-editor, [role="slider"], [role="switch"], [role="option"], [role="listbox"], a[href], summary, [aria-label="Temporizador Pomodoro"]')) {
+        return;
+      }
+      const button = target?.closest('button, [role="button"]');
+      if (button && !button.hasAttribute('data-tts-control')) return;
+
+      event.preventDefault();
+      suppressKeyUpRef.current = true;
+      if (controller.status === 'speaking') controller.pause();
+      else if (controller.status === 'paused') controller.resume();
+      else controller.stop();
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (!suppressKeyUpRef.current || (event.code !== 'Space' && event.key !== ' ')) return;
+      suppressKeyUpRef.current = false;
+      event.preventDefault();
+    };
+    window.addEventListener('keydown', onKeyDown, { capture: true });
+    window.addEventListener('keyup', onKeyUp, { capture: true });
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, { capture: true });
+      window.removeEventListener('keyup', onKeyUp, { capture: true });
+    };
+  }, [containerRef, controller.pause, controller.resume, controller.status, controller.stop]);
 }
 
 export function ttsWordCount(segments: SpeechSegment[]): number {

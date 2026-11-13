@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import packageMetadata from '../../package.json';
 
 export function resolvePackageVersion(metadata: Record<string, unknown>): string {
-  return typeof metadata.version === 'string' && metadata.version.trim() ? metadata.version : '1.0.5';
+  return typeof metadata.version === 'string' && metadata.version.trim() ? metadata.version : '1.0.7';
 }
 
 const packageVersion = resolvePackageVersion(packageMetadata);

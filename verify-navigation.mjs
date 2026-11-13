@@ -17,8 +17,8 @@ const page = await context.newPage();
 watch(page);
 await page.goto('http://127.0.0.1:1420', { waitUntil: 'networkidle' });
 await page.getByText('By SrMaxi', { exact: true }).waitFor();
-await page.getByText('v1.0.5', { exact: true }).waitFor();
-checks.push('La cabecera muestra By SrMaxi y la versión base v1.0.5');
+await page.getByText('v1.0.7', { exact: true }).waitFor();
+checks.push('La cabecera muestra By SrMaxi y la versión base v1.0.7');
 await page.getByRole('button', { name: 'Crear texto nuevo', exact: true }).click();
 await page.getByLabel('Editor Markdown', { exact: true }).waitFor();
 assert.equal(await page.getByLabel('Editor Markdown', { exact: true }).inputValue(), '');
@@ -74,7 +74,7 @@ await nativePage.addInitScript(() => {
     transformCallback: () => ++callbackId,
     unregisterCallback: () => undefined,
     invoke: async (command, args = {}) => {
-      if (command === 'plugin:app|version') return '1.0.5';
+      if (command === 'plugin:app|version') return '1.0.7';
       if (command === 'plugin:event|listen') return 1;
       if (command === 'plugin:updater|check') return null;
       if (command === 'plugin:window|is_fullscreen') return window.__nativeFullscreen;
@@ -100,6 +100,14 @@ checks.push('Tauri recibe setFullscreen(true/false) y el botón refleja isFullsc
 await nativePage.evaluate(() => { window.__nativeFullscreen = true; window.dispatchEvent(new Event('resize')); });
 await nativePage.getByRole('button', { name: 'Salir de pantalla completa', exact: true }).waitFor();
 checks.push('El estado se sincroniza cuando la ventana nativa cambia externamente');
+
+await nativePage.getByRole('button', { name: 'Ocultar barra superior', exact: true }).click();
+await nativePage.getByRole('button', { name: 'Mostrar barra superior', exact: true }).waitFor();
+await nativePage.keyboard.press('F11');
+await nativePage.waitForFunction(() => window.__nativeFullscreen === false);
+await nativePage.keyboard.press('F11');
+await nativePage.waitForFunction(() => window.__nativeFullscreen === true);
+checks.push('F11 funciona en Tauri incluso con la barra superior oculta');
 
 console.log(JSON.stringify({ checks, errors }, null, 2));
 assert.equal(errors.length, 0, `Errores de ejecución: ${errors.join('\n')}`);

@@ -53,12 +53,12 @@ export function useFullscreen() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'F11') return;
+      if ((event.key !== 'F11' && event.code !== 'F11') || event.repeat) return;
       event.preventDefault();
       void toggleFullscreen();
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
   }, [toggleFullscreen]);
 
   return { fullscreen, supported, error, toggleFullscreen };

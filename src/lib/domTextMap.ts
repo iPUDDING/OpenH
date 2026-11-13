@@ -92,6 +92,7 @@ function clearOverlay(root: HTMLElement): void {
 
 function paintOverlay(root: HTMLElement, range: Range, kind: 'word' | 'phrase' | 'search' | 'search-current'): void {
   const rootRect = root.getBoundingClientRect();
+  const zoom = Number(getComputedStyle(root).zoom) || 1;
   const overlay = document.createElement('div');
   overlay.dataset.openhubHighlightOverlay = kind;
   overlay.className = 'openhub-highlight-overlay';
@@ -99,10 +100,10 @@ function paintOverlay(root: HTMLElement, range: Range, kind: 'word' | 'phrase' |
     if (rect.width < 1 || rect.height < 1) continue;
     const mark = document.createElement('mark');
     mark.className = `openhub-fallback-${kind}`;
-    mark.style.left = `${rect.left - rootRect.left + root.scrollLeft}px`;
-    mark.style.top = `${rect.top - rootRect.top + root.scrollTop}px`;
-    mark.style.width = `${rect.width}px`;
-    mark.style.height = `${rect.height}px`;
+    mark.style.left = `${(rect.left - rootRect.left) / zoom + root.scrollLeft}px`;
+    mark.style.top = `${(rect.top - rootRect.top) / zoom + root.scrollTop}px`;
+    mark.style.width = `${rect.width / zoom}px`;
+    mark.style.height = `${rect.height / zoom}px`;
     overlay.append(mark);
   }
   root.append(overlay);

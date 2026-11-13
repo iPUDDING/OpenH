@@ -1,4 +1,4 @@
-import { createElement, useCallback, useEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type AnchorHTMLAttributes } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -10,11 +10,8 @@ import type { SpeechPosition } from '@/types';
 import { headingId } from '@/lib/headings';
 import { useAppStore } from '@/store/useAppStore';
 
-function textContent(node: ReactNode): string {
-  if (typeof node === 'string' || typeof node === 'number') return String(node);
-  if (Array.isArray(node)) return node.map(textContent).join('');
-  if (node && typeof node === 'object' && 'props' in node) return textContent((node.props as { children?: ReactNode }).children);
-  return '';
+function MarkdownLink({ children, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) {
+  return <a {...props} target="_blank" rel="noreferrer noopener">{children}</a>;
 }
 
 interface MarkdownRendererProps {
@@ -30,11 +27,17 @@ export function MarkdownRenderer({ content, documentPath, position, autoScroll, 
   const readerFontSize = useAppStore((state) => state.readerFontSize);
   const readerLineHeight = useAppStore((state) => state.readerLineHeight);
   const readerWidth = useAppStore((state) => state.readerWidth);
+  const viewerZoom = useAppStore((state) => state.viewerZoom);
   const [map, setMap] = useState<DocumentTextMap | null>(null);
 
-  useEffect(() => {
-    if (!rootRef.current) return;
-    const next = buildDomTextMap(rootRef.current);
+  // Asigna IDs y mapea el DOM tras el commit sin reemplazar nodos <h1>–<h6> en re-renders.
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    root.querySelectorAll<HTMLHeadingElement>('h1, h2, h3, h4, h5, h6').forEach((heading, index) => {
+      heading.id = headingId(heading.textContent ?? '', index);
+    });
+    const next = buildDomTextMap(root);
     setMap(next);
     onTextMap(next);
     return () => clearSpeechHighlights(next);
@@ -48,28 +51,22 @@ export function MarkdownRenderer({ content, documentPath, position, autoScroll, 
     <img {...props} src={resolveMarkdownAsset(props.src ?? '', documentPath)} loading="lazy" alt={props.alt ?? ''} />
   ), [documentPath]);
 
-  let headingIndex = 0;
-  const heading = (level: number) => function Heading({ children, ...props }: HTMLAttributes<HTMLHeadingElement>) {
-    const index = headingIndex++;
-    const id = headingId(textContent(children), index);
-    return createElement(`h${level}`, { ...props, id }, children);
-  };
+  const components = useMemo(() => ({
+    img: handleImage,
+    a: MarkdownLink,
+  }), [handleImage]);
 
   return (
     <article
       ref={rootRef}
       className="markdown-body openhub-highlight-root"
       aria-label="Vista previa de Markdown"
-      style={{ fontSize: `${readerFontSize / 100}rem`, lineHeight: readerLineHeight, maxWidth: `${readerWidth}px` }}
+      style={{ fontSize: `${readerFontSize / 100}rem`, lineHeight: readerLineHeight, maxWidth: `${readerWidth}px`, zoom: viewerZoom }}
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[[rehypeHighlight, { detect: false }], rehypeKatex]}
-        components={{
-          h1: heading(1), h2: heading(2), h3: heading(3), h4: heading(4), h5: heading(5), h6: heading(6),
-          img: handleImage,
-          a: ({ children, ...props }) => <a {...props} target="_blank" rel="noreferrer noopener">{children}</a>,
-        }}
+        components={components}
       >
         {content}
       </ReactMarkdown>

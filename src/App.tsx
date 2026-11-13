@@ -9,6 +9,7 @@ import { UpdateManager } from '@/components/layout/UpdateManager';
 import { Button } from '@/components/ui/Button';
 import { Hint } from '@/components/ui/Tooltip';
 import { useAppStore } from '@/store/useAppStore';
+import { useFullscreen } from '@/hooks/useFullscreen';
 import type { ToolId } from '@/types';
 
 const TtsStudio = lazy(() => import('@/components/tools/tts/TtsStudio'));
@@ -21,6 +22,7 @@ export default function App() {
   const activeTool = useAppStore((state) => state.activeTool);
   const setActiveTool = useAppStore((state) => state.setActiveTool);
   const theme = useAppStore((state) => state.theme);
+  const fullscreenState = useFullscreen();
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const [commandsOpen, setCommandsOpen] = useState(false);
   const [headerHidden, setHeaderHidden] = useState(false);
@@ -91,7 +93,7 @@ export default function App() {
           </Button>
         </Hint>
       ) : (
-        <Header onToggleSidebar={() => setSidebarOpen((open) => !open)} onOpenCommands={() => setCommandsOpen(true)} onHide={() => setHeaderHidden(true)} />
+        <Header onToggleSidebar={() => setSidebarOpen((open) => !open)} onOpenCommands={() => setCommandsOpen(true)} onHide={() => setHeaderHidden(true)} fullscreenState={fullscreenState} />
       )}
       <div className="relative flex min-h-0 flex-1">
         <Sidebar open={sidebarOpen} headerHidden={headerHidden} />
@@ -102,7 +104,7 @@ export default function App() {
           {visited.has('settings') && panel('settings', <Suspense fallback={<ModuleFallback />}><SettingsView /></Suspense>)}
         </main>
       </div>
-      <CommandPalette open={commandsOpen} onClose={() => setCommandsOpen(false)} onToggleSidebar={() => setSidebarOpen((open) => !open)} onToggleHeader={() => setHeaderHidden((hidden) => !hidden)} />
+      <CommandPalette open={commandsOpen} onClose={() => setCommandsOpen(false)} onToggleSidebar={() => setSidebarOpen((open) => !open)} onToggleHeader={() => setHeaderHidden((hidden) => !hidden)} onToggleFullscreen={() => void fullscreenState.toggleFullscreen()} fullscreen={fullscreenState.fullscreen} />
       <UpdateManager />
     </div>
   );

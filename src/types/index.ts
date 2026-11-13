@@ -11,6 +11,8 @@ export interface RecentDocument {
   openedAt: number;
   /** Solo Markdown pequeño: permite reabrir borradores también en navegador. */
   content?: string;
+  /** Indica si el usuario asignó un nombre visible personalizado dentro de OpenHub. */
+  customName?: boolean;
 }
 
 export interface TtsSettings {
@@ -26,11 +28,13 @@ export interface PomodoroSettings {
 }
 
 export interface OpenedDocument {
+  id?: string;
   name: string;
   path?: string;
   kind: DocumentKind;
   text?: string;
   data?: Uint8Array;
+  customName?: boolean;
 }
 
 export interface SpeechSegment {

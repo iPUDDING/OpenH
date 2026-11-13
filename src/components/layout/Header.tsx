@@ -3,13 +3,19 @@ import { Button } from '@/components/ui/Button';
 import { Hint } from '@/components/ui/Tooltip';
 import { useAppStore } from '@/store/useAppStore';
 import { useAppVersion } from '@/hooks/useAppVersion';
-import { useFullscreen } from '@/hooks/useFullscreen';
 
-export function Header({ onToggleSidebar, onOpenCommands, onHide }: { onToggleSidebar: () => void; onOpenCommands: () => void; onHide: () => void }) {
+interface FullscreenState {
+  fullscreen: boolean;
+  supported: boolean;
+  error: string | null;
+  toggleFullscreen: () => Promise<void>;
+}
+
+export function Header({ onToggleSidebar, onOpenCommands, onHide, fullscreenState }: { onToggleSidebar: () => void; onOpenCommands: () => void; onHide: () => void; fullscreenState: FullscreenState }) {
   const theme = useAppStore((state) => state.theme);
   const setTheme = useAppStore((state) => state.setTheme);
   const version = useAppVersion();
-  const { fullscreen, supported, error, toggleFullscreen } = useFullscreen();
+  const { fullscreen, supported, error, toggleFullscreen } = fullscreenState;
   const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   return (

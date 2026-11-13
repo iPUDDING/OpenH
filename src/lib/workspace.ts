@@ -25,6 +25,7 @@ function recentDocuments(value: unknown, fallback: RecentDocument[]): RecentDocu
       path: typeof item.path === 'string' ? item.path.slice(0, 2000) : undefined,
       openedAt: number(item.openedAt, Date.now(), 0, Number.MAX_SAFE_INTEGER),
       content: typeof item.content === 'string' ? item.content.slice(0, 2_000_000) : undefined,
+      ...(item.customName === true ? { customName: true } : {}),
     }];
   }).slice(0, 12);
 }
@@ -48,11 +49,13 @@ export function createWorkspaceBackup(): string {
       readerFontSize: state.readerFontSize,
       readerLineHeight: state.readerLineHeight,
       readerWidth: state.readerWidth,
+      viewerZoom: state.viewerZoom,
       recents: state.recents,
       viewerMode: state.viewerMode,
       markdownContent: state.markdownContent,
       markdownName: state.markdownName,
       markdownPath: state.markdownPath,
+      markdownId: state.markdownId,
       ttsText: state.ttsText,
       tts: state.tts,
       pronunciationRules: state.pronunciationRules,
@@ -75,11 +78,13 @@ export function parseWorkspaceBackup(json: string) {
     readerFontSize: number(data.readerFontSize, current.readerFontSize, 80, 200),
     readerLineHeight: number(data.readerLineHeight, current.readerLineHeight, 1.4, 2.2),
     readerWidth: number(data.readerWidth, current.readerWidth, 600, 1100),
+    viewerZoom: number(data.viewerZoom, current.viewerZoom, 0.5, 3),
     recents: recentDocuments(data.recents, current.recents),
     viewerMode: data.viewerMode === 'split' ? 'split' as const : data.viewerMode === 'preview' ? 'preview' as const : current.viewerMode,
     markdownContent: text(data.markdownContent, current.markdownContent),
     markdownName: text(data.markdownName, current.markdownName, 260),
     markdownPath: typeof data.markdownPath === 'string' ? data.markdownPath : current.markdownPath,
+    markdownId: typeof data.markdownId === 'string' ? data.markdownId : current.markdownId,
     ttsText: text(data.ttsText, current.ttsText),
     tts: object(data.tts) ? {
       voiceURI: text(data.tts.voiceURI, current.tts.voiceURI, 500),

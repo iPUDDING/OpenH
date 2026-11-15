@@ -1,4 +1,4 @@
-# Informe de verificación — OpenHub 1.0.10
+# Informe de verificación — OpenHub 1.1.0
 
 **Fecha:** 11 de noviembre de 2026.
 
@@ -7,17 +7,17 @@
 | Comprobación | Resultado |
 |---|---|
 | `npm run typecheck` | Correcto, sin errores TypeScript. |
-| `npm test` | 10 archivos; **57/57 pruebas unitarias** superadas. |
-| `npm run build` | Build Vite de producción correcto; **2417 módulos** transformados. |
+| `npm test` | 14 archivos; **70/70 pruebas unitarias** superadas (incluye parsers OOXML: XML, DOCX, PPTX y XLSX). |
+| `npm run build` | Build Vite de producción correcto; **2428 módulos** transformados (chunk `office` diferido con JSZip). |
 | `npm audit --omit=dev --audit-level=low` | **0 vulnerabilidades** en dependencias de producción. |
 | `node verify-improvements.mjs` | **7 comprobaciones** funcionales superadas; **`errors: []`**. |
 | `node verify-usability.mjs` | **14 comprobaciones** de usabilidad superadas; **`errors: []`**. |
 | `node verify-updater.mjs` | **8 comprobaciones** del actualizador superadas; **`errors: []`**. |
 | `node verify-pomodoro.mjs` | **6 comprobaciones** de apilamiento, clics y alarmas superadas; **`errors: []`**. |
 | `node verify-navigation.mjs` | **10 comprobaciones** de identidad, Recientes y pantalla completa (`F11` global) superadas; **`errors: []`**. |
-| `node verify-viewer-features.mjs` | **16 comprobaciones** de zoom con scroll, renombrado, subrayado de títulos/subtítulos, atajo `Espacio`, tiempo restante, fórmulas LaTeX y guiones superadas; **`errors: []`**. |
+| `node verify-viewer-features.mjs` | **19 comprobaciones** de zoom con scroll, renombrado, subrayado de títulos/subtítulos, atajo `Espacio`, tiempo restante, fórmulas LaTeX, guiones y visor DOCX/PPTX/XLSX superadas; **`errors: []`**. |
 
-Total de navegador: **61/61 comprobaciones** sobre el frontend de producción servido en el puerto 1420 mediante Chromium/Playwright. No se modifica la interfaz distribuida para aparentar resultados.
+Total de navegador: **64/64 comprobaciones** sobre el frontend de producción servido en el puerto 1420 mediante Chromium/Playwright. No se modifica la interfaz distribuida para aparentar resultados.
 
 ## E2E general
 
@@ -28,6 +28,19 @@ Total de navegador: **61/61 comprobaciones** sobre el frontend de producción se
 5. Descarga una copia JSON y comprueba aplicación `OpenHub`, versión `1` y regla incluida.
 6. Genera y abre un PDF real de dos páginas; verifica que el contador corresponde al PDF y no al Markdown anterior.
 7. Busca “Segunda”, comprueba `openhub-search`/`openhub-search-current` y el salto automático a página 2.
+
+## E2E de documentos Office (DOCX, PPTX y XLSX)
+
+`verify-viewer-features.mjs` abre archivos DOCX, PPTX y XLSX reales generados por
+`scripts/generate-fixtures.mjs` (con encabezados, listas, tablas, imágenes, enlaces,
+notas de diapositiva y hojas múltiples) y verifica:
+
+1. DOCX: encabezados `h1`/`h2`, lista de 3 elementos, tabla con cabecera, imagen
+   embebida, enlace externo, insignia `DOCX` y lectura TTS del título.
+2. PPTX: dos diapositivas en orden con títulos, cuerpo, lista, tabla, imagen,
+   notas del orador en cita, insignia `PPTX` e índice navegable entre diapositivas.
+3. XLSX: dos hojas en orden (`Técnicas`, `Resumen`) con tablas, valores numéricos,
+   booleano, celda combinada, hipervínculo e insignia `XLSX`.
 
 ## E2E de usabilidad y regresiones
 

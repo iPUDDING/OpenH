@@ -22,6 +22,7 @@ import type { DocumentTextMap } from '@/lib/domTextMap';
 import type { OpenedDocument, RecentDocument, SpeechSegment } from '@/types';
 
 const PdfRenderer = lazy(() => import('./PdfRenderer').then((module) => ({ default: module.PdfRenderer })));
+const OfficeRenderer = lazy(() => import('./OfficeRenderer').then((module) => ({ default: module.OfficeRenderer })));
 
 function isMarkdownDocument(document: CurrentDocument | null): document is CurrentDocument {
   return document?.kind === 'markdown';
@@ -31,7 +32,7 @@ interface CurrentDocument {
   id: string;
   name: string;
   path?: string;
-  kind: 'markdown' | 'pdf';
+  kind: 'markdown' | 'pdf' | 'docx' | 'pptx' | 'xlsx';
   data?: Uint8Array;
   customName?: boolean;
 }
@@ -72,6 +73,7 @@ export default function DocumentViewer() {
   const [headerDraftName, setHeaderDraftName] = useState('');
   const sectionRef = useRef<HTMLElement>(null);
   const markdownAreaRef = useRef<HTMLDivElement>(null);
+  const officeAreaRef = useRef<HTMLDivElement>(null);
   const previewScrollRef = useRef<HTMLDivElement>(null);
   const headerRenameInputRef = useRef<HTMLInputElement>(null);
   const headerRenameCancelledRef = useRef(false);
@@ -79,10 +81,20 @@ export default function DocumentViewer() {
   const zoomRef = useRef(viewerZoom);
   zoomRef.current = viewerZoom;
 
-  const headings = useMemo(() => extractHeadings(markdown), [markdown]);
-  const documentWordCount = useMemo(() => current?.kind === 'pdf'
-    ? countWords(pdfSegments.map((segment) => segment.sourceText ?? segment.text).join('\n'))
-    : countWords(markdown), [current?.kind, markdown, pdfSegments]);
+  const headings = useMemo(() => {
+    if ((current?.kind === 'docx' || current?.kind === 'pptx' || current?.kind === 'xlsx') && textMap) {
+      return textMap.segments
+        .filter((segment) => /^H[1-6]$/.test(segment.element.tagName))
+        .map((segment) => ({ id: segment.id, level: Number(segment.element.tagName[1]), text: segment.text.trim() }))
+        .filter((heading) => heading.text);
+    }
+    return extractHeadings(markdown);
+  }, [current?.kind, textMap, markdown]);
+  const documentWordCount = useMemo(() => {
+    if (current?.kind === 'pdf') return countWords(pdfSegments.map((segment) => segment.sourceText ?? segment.text).join('\n'));
+    if (current?.kind === 'docx' || current?.kind === 'pptx' || current?.kind === 'xlsx') return countWords(textMap?.segments.map((segment) => segment.text).join('\n') ?? '');
+    return countWords(markdown);
+  }, [current?.kind, markdown, pdfSegments, textMap]);
 
   const sourceSegments = useMemo<SpeechSegment[]>(() => current?.kind === 'pdf' ? pdfSegments : textMap?.segments ?? [], [current?.kind, pdfSegments, textMap]);
   const segments = useMemo(() => prepareSpeechSegments(applyDashSpeech(applyMathSpeech(sourceSegments)), pronunciationRules), [sourceSegments, pronunciationRules]);
@@ -109,7 +121,7 @@ export default function DocumentViewer() {
       setMarkdown(text, name, document.path, id);
       addRecent({ id, name, path: document.path, kind: 'markdown', content: text, ...(customName ? { customName: true } : {}) });
     } else {
-      addRecent({ id, name, path: document.path, kind: 'pdf', ...(customName ? { customName: true } : {}) });
+      addRecent({ id, name, path: document.path, kind: document.kind, ...(customName ? { customName: true } : {}) });
     }
   }, [addRecent, setMarkdown, tts.stop]);
 
@@ -256,10 +268,11 @@ export default function DocumentViewer() {
   }, [setViewerZoom]);
 
   const isMarkdown = current?.kind === 'markdown';
+  const isOffice = current?.kind === 'docx' || current?.kind === 'pptx' || current?.kind === 'xlsx';
 
   useEffect(() => {
-    const element = markdownAreaRef.current;
-    if (!element || !isMarkdown) return;
+    const element = isMarkdown ? markdownAreaRef.current : isOffice ? officeAreaRef.current : null;
+    if (!element) return;
     const onWheel = (event: WheelEvent) => {
       if (!event.ctrlKey && !event.metaKey) return;
       event.preventDefault();
@@ -273,10 +286,10 @@ export default function DocumentViewer() {
     };
     element.addEventListener('wheel', onWheel, { passive: false });
     return () => element.removeEventListener('wheel', onWheel);
-  }, [applyMarkdownZoom, current?.id, isMarkdown]);
+  }, [applyMarkdownZoom, current?.id, isMarkdown, isOffice]);
 
   useEffect(() => {
-    if (!isMarkdown) return;
+    if (!isMarkdown && !isOffice) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (!sectionRef.current?.offsetParent) return;
       const target = event.target as HTMLElement | null;
@@ -289,7 +302,7 @@ export default function DocumentViewer() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [applyMarkdownZoom, isMarkdown]);
+  }, [applyMarkdownZoom, isMarkdown, isOffice]);
 
   const startHeaderRename = useCallback(() => {
     if (!current) return;
@@ -410,21 +423,26 @@ export default function DocumentViewer() {
                       <Pencil className="h-3 w-3" />
                     </Button>
                   </Hint>
+                  {current.kind !== 'markdown' && (
+                    <span className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{current.kind}</span>
+                  )}
                 </div>
               )
             ) : (
               <h1 className="truncate text-sm font-semibold">Visor de documentos</h1>
             )}
-            <p className="truncate text-xs text-muted-foreground">{current?.path || (current ? `${documentWordCount} palabras` : 'Markdown, TXT y PDF')}</p>
+            <p className="truncate text-xs text-muted-foreground">{current?.path || (current ? `${documentWordCount} palabras` : 'Markdown, TXT, PDF, DOCX, PPTX y XLSX')}</p>
           </div>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-1.5">
           {isMarkdown && (
+            <div className="mr-1 flex rounded-md border bg-background p-0.5">
+              <Hint label="Vista previa"><Button variant={mode === 'preview' ? 'secondary' : 'ghost'} size="icon-sm" onClick={() => setMode('preview')} aria-label="Vista previa"><PanelTop className="h-4 w-4" /></Button></Hint>
+              <Hint label="Editor y vista dividida"><Button variant={mode === 'split' ? 'secondary' : 'ghost'} size="icon-sm" onClick={() => setMode('split')} aria-label="Vista dividida"><Columns2 className="h-4 w-4" /></Button></Hint>
+            </div>
+          )}
+          {(isMarkdown || isOffice) && (
             <>
-              <div className="mr-1 flex rounded-md border bg-background p-0.5">
-                <Hint label="Vista previa"><Button variant={mode === 'preview' ? 'secondary' : 'ghost'} size="icon-sm" onClick={() => setMode('preview')} aria-label="Vista previa"><PanelTop className="h-4 w-4" /></Button></Hint>
-                <Hint label="Editor y vista dividida"><Button variant={mode === 'split' ? 'secondary' : 'ghost'} size="icon-sm" onClick={() => setMode('split')} aria-label="Vista dividida"><Columns2 className="h-4 w-4" /></Button></Hint>
-              </div>
               <div className="mr-1 flex items-center rounded-md border bg-background p-0.5" role="group" aria-label="Zoom del documento">
                 <Hint label="Alejar · Ctrl+rueda o Ctrl+−">
                   <Button variant="ghost" size="icon-sm" onClick={() => applyMarkdownZoom(viewerZoom - 0.1)} disabled={viewerZoom <= 0.5} aria-label="Alejar documento"><Minus className="h-3.5 w-3.5" /></Button>
@@ -444,9 +462,9 @@ export default function DocumentViewer() {
                 </Hint>
               </div>
               <Hint label="Índice del documento"><Button variant={outlineOpen ? 'secondary' : 'ghost'} size="icon-sm" onClick={() => setOutlineOpen((open) => !open)} disabled={!headings.length} aria-label="Mostrar índice"><ListTree className="h-4 w-4" /></Button></Hint>
-              <Hint label="Guardar Markdown"><Button variant="ghost" size="icon-sm" onClick={() => void saveMarkdown()} disabled={files.busy} aria-label="Guardar Markdown"><Download className="h-4 w-4" /></Button></Hint>
             </>
           )}
+          {isMarkdown && <Hint label="Guardar Markdown"><Button variant="ghost" size="icon-sm" onClick={() => void saveMarkdown()} disabled={files.busy} aria-label="Guardar Markdown"><Download className="h-4 w-4" /></Button></Hint>}
           <Button size="sm" onClick={() => void openDialog()} disabled={files.busy}><FolderOpen className="h-4 w-4" />Abrir</Button>
         </div>
       </header>
@@ -500,12 +518,21 @@ export default function DocumentViewer() {
                 </div>
               </div>
             </div>
+          ) : (current.kind === 'docx' || current.kind === 'pptx' || current.kind === 'xlsx') && current.data ? (
+            <div ref={officeAreaRef} className="flex min-h-0 flex-1 bg-card">
+              {outlineOpen && headings.length > 0 && <DocumentOutline headings={headings} />}
+              <div ref={previewScrollRef} className="min-h-0 flex-1 overflow-auto">
+                <Suspense fallback={<div className="grid flex-1 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /><span className="sr-only">Convirtiendo documento</span></div>}>
+                  <OfficeRenderer kind={current.kind} data={current.data} position={tts.position} autoScroll={autoScroll} onTextMap={handleTextMap} />
+                </Suspense>
+              </div>
+            </div>
           ) : current.data ? (
             <Suspense fallback={<div className="grid flex-1 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /><span className="sr-only">Cargando PDF.js</span></div>}>
               <PdfRenderer data={current.data} position={tts.position} autoScroll={autoScroll} onSegmentsChange={handlePdfSegments} />
             </Suspense>
           ) : (
-            <div className="grid flex-1 place-items-center p-6 text-center"><div><p className="mb-3 text-muted-foreground">Vuelve a abrir “{basename(current.name)}” para cargar su contenido.</p><Button onClick={() => void openDialog()}>Seleccionar PDF</Button></div></div>
+            <div className="grid flex-1 place-items-center p-6 text-center"><div><p className="mb-3 text-muted-foreground">Vuelve a abrir “{basename(current.name)}” para cargar su contenido.</p><Button onClick={() => void openDialog()}>Seleccionar {current.kind.toUpperCase()}</Button></div></div>
           )}
         </>
       )}

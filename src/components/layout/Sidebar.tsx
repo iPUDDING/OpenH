@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AudioLines, BrainCircuit, Check, Clock3, FilePlus2, FileText, FolderOpen, Pencil, Settings, Trash2, X } from 'lucide-react';
+import { AudioLines, BrainCircuit, Check, Clock3, FilePlus2, FileText, FileSpreadsheet, FolderOpen, Pencil, Presentation, Settings, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Hint } from '@/components/ui/Tooltip';
@@ -110,7 +110,7 @@ export function Sidebar({ open, headerHidden = false }: { open: boolean; headerH
                 <div key={recent.id} className={cn('group flex items-center rounded-md hover:bg-accent', isCurrent && 'bg-primary/5')}>
                   {isEditing ? (
                     <div className="flex min-w-0 flex-1 items-center gap-1 px-2 py-1.5">
-                      <FileText className={cn('h-3.5 w-3.5 shrink-0', recent.kind === 'pdf' ? 'text-red-400' : 'text-blue-400')} />
+                      {recent.kind === 'pptx' ? <Presentation className="h-3.5 w-3.5 shrink-0 text-orange-400" /> : recent.kind === 'xlsx' ? <FileSpreadsheet className="h-3.5 w-3.5 shrink-0 text-green-400" /> : <FileText className={cn('h-3.5 w-3.5 shrink-0', recent.kind === 'pdf' ? 'text-red-400' : 'text-blue-400')} />}
                       <Input
                         ref={renameInputRef}
                         value={draftName}
@@ -149,7 +149,7 @@ export function Sidebar({ open, headerHidden = false }: { open: boolean; headerH
                         }}
                         title={`${recent.path || recent.name} (doble clic para renombrar)`}
                       >
-                        <FileText className={cn('h-3.5 w-3.5 shrink-0', recent.kind === 'pdf' ? 'text-red-400' : 'text-blue-400')} />
+                        {recent.kind === 'pptx' ? <Presentation className="h-3.5 w-3.5 shrink-0 text-orange-400" /> : recent.kind === 'xlsx' ? <FileSpreadsheet className="h-3.5 w-3.5 shrink-0 text-green-400" /> : <FileText className={cn('h-3.5 w-3.5 shrink-0', recent.kind === 'pdf' ? 'text-red-400' : 'text-blue-400')} />}
                         <span className="min-w-0"><span className="block truncate text-xs">{recent.name}</span><span className="block text-[10px] text-muted-foreground">{new Date(recent.openedAt).toLocaleDateString()}</span></span>
                       </button>
                       <button

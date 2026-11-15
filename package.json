@@ -1,7 +1,7 @@
 {
   "name": "openhub-devsuite",
   "private": true,
-  "version": "1.0.10",
+  "version": "1.1.0",
   "description": "Hub de escritorio 100% offline para leer, escuchar y visualizar documentos.",
   "type": "module",
   "scripts": {
@@ -28,6 +28,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "codemirror": "^6.0.1",
+    "jszip": "^3.10.2",
     "katex": "0.19.1",
     "lucide-react": "^0.468.0",
     "markmap-common": "^0.18.9",

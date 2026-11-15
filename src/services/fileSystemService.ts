@@ -1,11 +1,16 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readFile, writeFile } from '@tauri-apps/plugin-fs';
-import { documentKindFromName } from '@/store/useAppStore';
+import { documentKindFromName, isBinaryDocumentKind } from '@/store/useAppStore';
 import { basename, dirname } from '@/lib/utils';
 import type { OpenedDocument } from '@/types';
 
 const MAX_BROWSER_FILE_SIZE = 150 * 1024 * 1024;
+const SUPPORTED_MESSAGE = 'Formato no compatible. Abre un archivo .md, .markdown, .txt, .pdf, .docx, .pptx o .xlsx.';
+
+function isSupportedName(name: string): boolean {
+  return /\.(md|markdown|txt|pdf|docx|pptx|xlsx)$/i.test(name);
+}
 
 export function isTauri(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
@@ -17,12 +22,10 @@ function decodeText(data: Uint8Array): string {
 
 async function fromNativePath(path: string): Promise<OpenedDocument> {
   const name = basename(path);
+  if (!isSupportedName(name)) throw new Error(SUPPORTED_MESSAGE);
   const kind = documentKindFromName(name);
-  if (kind !== 'pdf' && !/\.(md|markdown|txt)$/i.test(name)) {
-    throw new Error('Formato no compatible. Abre un archivo .md, .markdown, .txt o .pdf.');
-  }
   const data = await readFile(path);
-  return kind === 'pdf'
+  return isBinaryDocumentKind(kind)
     ? { name, path, kind, data }
     : { name, path, kind, text: decodeText(data) };
 }
@@ -33,7 +36,7 @@ export async function openDocumentDialog(): Promise<OpenedDocument | null> {
       multiple: false,
       directory: false,
       title: 'Abrir documento',
-      filters: [{ name: 'Documentos', extensions: ['md', 'markdown', 'txt', 'pdf'] }],
+      filters: [{ name: 'Documentos', extensions: ['md', 'markdown', 'txt', 'pdf', 'docx', 'pptx', 'xlsx'] }],
     });
     return typeof selected === 'string' ? fromNativePath(selected) : null;
   }
@@ -41,7 +44,7 @@ export async function openDocumentDialog(): Promise<OpenedDocument | null> {
   return new Promise<OpenedDocument | null>((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.md,.markdown,.txt,.pdf,text/markdown,text/plain,application/pdf';
+    input.accept = '.md,.markdown,.txt,.pdf,.docx,.pptx,.xlsx,text/markdown,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     input.onchange = async () => {
       try {
         resolve(input.files?.[0] ? await openBrowserFile(input.files[0]) : null);
@@ -61,11 +64,9 @@ export async function openDocumentPath(path: string): Promise<OpenedDocument> {
 
 export async function openBrowserFile(file: File): Promise<OpenedDocument> {
   if (file.size > MAX_BROWSER_FILE_SIZE) throw new Error('El archivo supera el límite de 150 MB.');
+  if (!isSupportedName(file.name)) throw new Error(SUPPORTED_MESSAGE);
   const kind = documentKindFromName(file.name);
-  if (kind !== 'pdf' && !/\.(md|markdown|txt)$/i.test(file.name)) {
-    throw new Error('Formato no compatible. Abre un archivo .md, .markdown, .txt o .pdf.');
-  }
-  if (kind === 'pdf') return { name: file.name, kind, data: new Uint8Array(await file.arrayBuffer()) };
+  if (isBinaryDocumentKind(kind)) return { name: file.name, kind, data: new Uint8Array(await file.arrayBuffer()) };
   return { name: file.name, kind, text: await file.text() };
 }
 

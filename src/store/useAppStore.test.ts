@@ -9,7 +9,7 @@ vi.stubGlobal('localStorage', {
   key: (index: number) => [...values.keys()][index] ?? null,
   get length() { return values.size; },
 });
-const { useAppStore } = await import('./useAppStore');
+const { documentKindFromName, useAppStore } = await import('./useAppStore');
 
 beforeEach(() => useAppStore.setState({
   recents: [],
@@ -101,5 +101,17 @@ describe('documentos recientes', () => {
     expect(useAppStore.getState().viewerZoom).toBe(1);
     state.setViewerZoom(1.25);
     expect(useAppStore.getState().viewerZoom).toBe(1.25);
+  });
+});
+
+describe('documentKindFromName', () => {
+  it('detecta Markdown, PDF, DOCX y PPTX por extensión', () => {
+    expect(documentKindFromName('nota.md')).toBe('markdown');
+    expect(documentKindFromName('nota.txt')).toBe('markdown');
+    expect(documentKindFromName('documento.pdf')).toBe('pdf');
+    expect(documentKindFromName('resumen.DOCX')).toBe('docx');
+    expect(documentKindFromName('clase.Pptx')).toBe('pptx');
+    expect(documentKindFromName('planilla.XLSX')).toBe('xlsx');
+    expect(documentKindFromName('sin-extension')).toBe('markdown');
   });
 });

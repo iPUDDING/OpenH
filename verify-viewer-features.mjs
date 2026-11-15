@@ -1,5 +1,5 @@
 import { chromium } from 'playwright';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
 const output = new URL('./docs/screenshots/mejoras/', import.meta.url).pathname;
@@ -181,7 +181,7 @@ await tauriPage.addInitScript(({ filePath, bytes }) => {
     unregisterCallback: () => undefined,
     invoke: async (command) => {
       window.__tauriCommands.push(command);
-      if (command === 'plugin:app|version') return '1.0.10';
+      if (command === 'plugin:app|version') return '1.1.0';
       if (command === 'plugin:event|listen') return 1;
       if (command === 'plugin:updater|check') return null;
       if (command === 'plugin:dialog|open') return filePath;
@@ -472,6 +472,110 @@ assert.equal(dashHighlight.connected, true);
 await dashPage.screenshot({ path: `${output}22-guiones-tts.png`, animations: 'disabled' });
 checks.push('Los guiones (`-`, `–`, `—`) se leen como pausa, rango o compuesto sin saltarse y el subrayado permanece conectado');
 await dashContext.close();
+
+// DOCX, PPTX y XLSX reales: apertura por input, render, TTS, zoom e índice.
+const officeContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+const officePage = await officeContext.newPage();
+watch(officePage);
+await officePage.goto('http://127.0.0.1:1420', { waitUntil: 'networkidle' });
+await officePage.evaluate(() => {
+  window.__spoken = [];
+  window.__utterances = [];
+  class MockUtterance {
+    constructor(text) { this.text = text; this.rate = 1; this.pitch = 1; this.volume = 1; this.lang = 'es-ES'; }
+  }
+  Object.defineProperty(window, 'SpeechSynthesisUtterance', { configurable: true, value: MockUtterance });
+  Object.defineProperty(window, 'speechSynthesis', {
+    configurable: true,
+    value: {
+      getVoices: () => [{ name: 'Voz QA local', lang: 'es-ES', voiceURI: 'qa-local' }],
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      speak(utterance) {
+        window.__utterances.push(utterance);
+        window.__spoken.push(utterance.text);
+        utterance.onend?.();
+      },
+      pause() {},
+      resume() {},
+      cancel() {},
+    },
+  });
+});
+// El input de archivo se crea al vuelo (fuera del DOM): lo capturamos y le
+// asignamos el archivo directamente, sin abrir el picker nativo. Los
+// fixtures se leen en Node y llegan en base64 (el preview solo sirve dist/).
+const officeFixtures = {
+  docx: (await readFile('tests/fixtures/muestra.docx')).toString('base64'),
+  pptx: (await readFile('tests/fixtures/muestra.pptx')).toString('base64'),
+  xlsx: (await readFile('tests/fixtures/muestra.xlsx')).toString('base64'),
+};
+await officePage.evaluate(() => {
+  window.__fileInputs = [];
+  const original = document.createElement.bind(document);
+  document.createElement = (tag, ...rest) => {
+    const element = original(tag, ...rest);
+    if (tag === 'input') {
+      // Sin esto, el click() abriría el picker nativo y en headless se
+      // autocancela (resolve(null)) antes de que asignemos el archivo.
+      element.click = () => {};
+      window.__fileInputs.push(element);
+    }
+    return element;
+  };
+});
+const openOfficeFile = async (base64, name, type) => {
+  const before = await officePage.evaluate(() => window.__fileInputs.length);
+  await officePage.getByRole('button', { name: 'Abrir', exact: true }).click();
+  await officePage.waitForFunction((count) => window.__fileInputs.length > count, before);
+  await officePage.evaluate(({ base64, name, type }) => {
+    const input = window.__fileInputs.at(-1);
+    const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+    const file = new File([bytes], name, { type });
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    input.files = transfer.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }, { base64, name, type });
+};
+await openOfficeFile(officeFixtures.docx, 'muestra.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+await officePage.locator('.markdown-body h1').waitFor();
+assert.equal(await officePage.locator('.markdown-body h1').first().innerText(), 'Fisioterapia respiratoria');
+assert.equal(await officePage.locator('.markdown-body h2').first().innerText(), 'Técnicas principales');
+assert.equal(await officePage.locator('.markdown-body ul li').count(), 3);
+assert.equal(await officePage.locator('.markdown-body table th').count(), 2);
+assert.equal(await officePage.locator('.markdown-body img').count(), 1);
+assert.match(await officePage.locator('.markdown-body a').first().getAttribute('href'), /example\.com/);
+assert.equal(await officePage.getByText('docx', { exact: true }).count(), 1);
+await officePage.getByRole('button', { name: 'Leer', exact: true }).click();
+await officePage.waitForFunction(() => window.__spoken.length > 0);
+assert.equal(await officePage.evaluate(() => window.__spoken[0]), 'Fisioterapia respiratoria');
+await officePage.screenshot({ path: `${output}23-docx.png`, animations: 'disabled' });
+checks.push('DOCX real: encabezados, lista, tabla, imagen, enlace y TTS con subrayado');
+await openOfficeFile(officeFixtures.pptx, 'muestra.pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+await officePage.locator('.markdown-body h1').nth(1).waitFor();
+assert.equal(await officePage.locator('.markdown-body h1').first().innerText(), 'Fisioterapia respiratoria');
+assert.equal(await officePage.locator('.markdown-body h1').nth(1).innerText(), 'Técnicas y práctica');
+assert.equal(await officePage.locator('.markdown-body ul li').count(), 2);
+assert.equal(await officePage.locator('.markdown-body table th').count(), 2);
+assert.equal(await officePage.locator('.markdown-body img').count(), 1);
+assert.equal(await officePage.locator('.markdown-body blockquote').first().innerText(), 'Recordar la práctica de hoy con el grupo.');
+assert.equal(await officePage.getByText('pptx', { exact: true }).count(), 1);
+await officePage.getByRole('button', { name: 'Mostrar índice' }).click();
+await officePage.locator('aside').getByRole('button', { name: 'Técnicas y práctica' }).click();
+await officePage.screenshot({ path: `${output}24-pptx.png`, animations: 'disabled' });
+checks.push('PPTX real: dos diapositivas en orden, tabla, imagen, notas e índice navegable');
+await openOfficeFile(officeFixtures.xlsx, 'muestra.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+await officePage.locator('.markdown-body h2').nth(1).waitFor();
+assert.equal(await officePage.locator('.markdown-body h2').first().innerText(), 'Técnicas');
+assert.equal(await officePage.locator('.markdown-body h2').nth(1).innerText(), 'Resumen');
+assert.equal(await officePage.locator('.markdown-body table').count(), 2);
+assert.equal(await officePage.locator('.markdown-body table td').first().innerText(), 'Técnica');
+assert.match(await officePage.locator('.markdown-body a').first().getAttribute('href'), /example\.com/);
+assert.equal(await officePage.getByText('xlsx', { exact: true }).count(), 1);
+await officePage.screenshot({ path: `${output}25-xlsx.png`, animations: 'disabled' });
+checks.push('XLSX real: dos hojas en orden con tablas, valores e hipervínculo');
+await officeContext.close();
 
 console.log(JSON.stringify({ checks, errors }, null, 2));
 assert.equal(errors.length, 0, `Errores de ejecución: ${errors.join('\n')}`);

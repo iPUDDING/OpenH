@@ -1,6 +1,6 @@
 export type ToolId = 'viewer' | 'tts' | 'markmap' | 'settings';
 export type Theme = 'light' | 'dark' | 'system';
-export type DocumentKind = 'markdown' | 'pdf';
+export type DocumentKind = 'markdown' | 'pdf' | 'docx' | 'pptx' | 'xlsx';
 export type ViewerMode = 'preview' | 'split';
 
 export interface RecentDocument {

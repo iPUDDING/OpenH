@@ -183,5 +183,15 @@ export const useAppStore = create<AppState>()(
 );
 
 export function documentKindFromName(name: string): DocumentKind {
-  return name.toLocaleLowerCase().endsWith('.pdf') ? 'pdf' : 'markdown';
+  const lower = name.toLocaleLowerCase();
+  if (lower.endsWith('.pdf')) return 'pdf';
+  if (lower.endsWith('.docx')) return 'docx';
+  if (lower.endsWith('.pptx')) return 'pptx';
+  if (lower.endsWith('.xlsx')) return 'xlsx';
+  return 'markdown';
+}
+
+/** ¿El formato se lee como binario (PDF/DOCX/PPTX) en lugar de texto? */
+export function isBinaryDocumentKind(kind: DocumentKind): boolean {
+  return kind === 'pdf' || kind === 'docx' || kind === 'pptx' || kind === 'xlsx';
 }

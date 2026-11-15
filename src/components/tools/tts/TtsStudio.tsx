@@ -6,6 +6,7 @@ import { countWords, extractWordRanges, splitParagraphs } from '@/lib/text';
 import { formatDuration } from '@/lib/utils';
 import { prepareSpeechSegments } from '@/lib/pronunciation';
 import { applyMathSpeech } from '@/lib/mathSpeech';
+import { applyDashSpeech } from '@/lib/dashSpeech';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Input';
 import { SelectField } from '@/components/ui/Select';
@@ -23,7 +24,7 @@ export default function TtsStudio() {
   const readerFontSize = useAppStore((state) => state.readerFontSize);
   const readerLineHeight = useAppStore((state) => state.readerLineHeight);
   const sourceSegments = useMemo(() => splitParagraphs(text), [text]);
-  const segments = useMemo(() => prepareSpeechSegments(applyMathSpeech(sourceSegments), pronunciationRules), [sourceSegments, pronunciationRules]);
+  const segments = useMemo(() => prepareSpeechSegments(applyDashSpeech(applyMathSpeech(sourceSegments)), pronunciationRules), [sourceSegments, pronunciationRules]);
   const controller = useTts(segments);
   const sectionRef = useRef<HTMLElement>(null);
   const readingRef = useRef<HTMLDivElement>(null);

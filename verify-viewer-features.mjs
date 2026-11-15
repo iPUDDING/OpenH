@@ -181,7 +181,7 @@ await tauriPage.addInitScript(({ filePath, bytes }) => {
     unregisterCallback: () => undefined,
     invoke: async (command) => {
       window.__tauriCommands.push(command);
-      if (command === 'plugin:app|version') return '1.0.9';
+      if (command === 'plugin:app|version') return '1.0.10';
       if (command === 'plugin:event|listen') return 1;
       if (command === 'plugin:updater|check') return null;
       if (command === 'plugin:dialog|open') return filePath;
@@ -417,6 +417,61 @@ assert.equal(mathHighlight.connected, true);
 await mathPage.screenshot({ path: `${output}21-formulas-tts.png`, animations: 'disabled' });
 checks.push('Las fórmulas LaTeX se leen en español natural sin código fuente y el subrayado permanece conectado');
 await mathContext.close();
+
+// 7. Guiones: la voz no se salta `-`, `–` ni `—` (pausas, rangos y compuestos)
+const dashContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'es-ES' });
+const dashPage = await dashContext.newPage();
+watch(dashPage);
+await dashPage.addInitScript(() => {
+  window.__spoken = [];
+  window.__utterances = [];
+  window.__ttsPausedCalls = 0;
+  window.__ttsResumedCalls = 0;
+  window.__ttsCanceledCalls = 0;
+  class FakeUtterance {
+    constructor(text) { this.text = text; this.rate = 1; this.pitch = 1; this.volume = 1; this.lang = 'es-ES'; }
+  }
+  Object.defineProperty(window, 'SpeechSynthesisUtterance', { configurable: true, value: FakeUtterance });
+  Object.defineProperty(window, 'speechSynthesis', {
+    configurable: true,
+    value: {
+      getVoices: () => [{ name: 'Voz QA local', lang: 'es-ES', voiceURI: 'qa-local' }],
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      speak: (utterance) => { window.__spoken.push(utterance.text); window.__utterances.push(utterance); },
+      pause: () => { window.__ttsPausedCalls += 1; },
+      resume: () => { window.__ttsResumedCalls += 1; },
+      cancel: () => { window.__ttsCanceledCalls += 1; },
+    },
+  });
+});
+
+await dashPage.goto('http://127.0.0.1:1420', { waitUntil: 'networkidle' });
+await dashPage.getByLabel('Markdown inicial').fill(
+  '# Guiones\n\nLa técnica —que es nueva— funciona en el rango 10-15 y es teórico-práctico.\n\nPárrafo normal de cierre.'
+);
+await dashPage.getByRole('button', { name: 'Abrir borrador' }).click();
+await dashPage.locator('.markdown-body h1').waitFor();
+await dashPage.getByRole('button', { name: 'Leer', exact: true }).click();
+await dashPage.waitForFunction(() => window.__spoken.length === 1);
+assert.equal(await dashPage.evaluate(() => window.__spoken[0]), 'Guiones');
+await dashPage.evaluate(() => window.__utterances.at(-1).onend());
+await dashPage.waitForFunction(() => window.__spoken.length === 2);
+const dashSpoken = await dashPage.evaluate(() => window.__spoken[1]);
+assert.match(dashSpoken, /técnica, que es nueva, funciona/);
+assert.match(dashSpoken, /10 a 15/);
+assert.match(dashSpoken, /teórico práctico/);
+assert.equal(dashSpoken.includes('—'), false);
+assert.equal(dashSpoken.includes('–'), false);
+assert.equal(dashSpoken.includes('-'), false);
+const dashHighlight = await dashPage.evaluate(() => {
+  const word = Array.from(window.CSS.highlights.get('openhub-word') ?? [])[0];
+  return { connected: Boolean(word?.startContainer?.isConnected), text: word?.toString() ?? '' };
+});
+assert.equal(dashHighlight.connected, true);
+await dashPage.screenshot({ path: `${output}22-guiones-tts.png`, animations: 'disabled' });
+checks.push('Los guiones (`-`, `–`, `—`) se leen como pausa, rango o compuesto sin saltarse y el subrayado permanece conectado');
+await dashContext.close();
 
 console.log(JSON.stringify({ checks, errors }, null, 2));
 assert.equal(errors.length, 0, `Errores de ejecución: ${errors.join('\n')}`);

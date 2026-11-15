@@ -29,7 +29,7 @@ await page.addInitScript(() => {
     },
     unregisterCallback(id) { callbacks.delete(id); },
     invoke: async (command, args = {}) => {
-      if (command === 'plugin:app|version') return '1.0.9';
+      if (command === 'plugin:app|version') return '1.0.10';
       if (command === 'plugin:event|listen') return 1;
       if (command === 'plugin:updater|check') {
         if (window.__qaCheckError) throw new Error('Red de QA no disponible');
@@ -37,7 +37,7 @@ await page.addInitScript(() => {
         return {
           rid: 1,
           currentVersion: '1.0.0',
-          version: '1.0.99',
+          version: '1.0.109',
           date: '2026-11-12T00:00:00Z',
           body: 'Mejoras de lectura, Pomodoro y estabilidad.\n\nActualización firmada de prueba.',
           rawJson: {},
@@ -65,13 +65,13 @@ await page.addInitScript(() => {
 
 await page.goto('http://127.0.0.1:1420', { waitUntil: 'networkidle' });
 await page.getByRole('dialog').waitFor({ timeout: 10000 });
-await page.getByRole('heading', { name: 'Nueva versión 1.0.99' }).waitFor();
+await page.getByRole('heading', { name: 'Nueva versión 1.0.109' }).waitFor();
 await page.getByText('Mejoras de lectura, Pomodoro y estabilidad.', { exact: false }).waitFor();
 checks.push('La comprobación automática muestra versión y notas');
 await page.screenshot({ path: `${output}14-actualizacion-disponible.png`, animations: 'disabled' });
 
 await page.getByRole('button', { name: 'Más tarde', exact: true }).click();
-assert.equal(await page.evaluate(() => localStorage.getItem('openhub-update-dismissed')), '1.0.99');
+assert.equal(await page.evaluate(() => localStorage.getItem('openhub-update-dismissed')), '1.0.109');
 await page.reload({ waitUntil: 'networkidle' });
 await page.waitForTimeout(2500);
 assert.equal(await page.getByRole('dialog').count(), 0);
@@ -79,7 +79,7 @@ checks.push('Más tarde descarta esa versión en el siguiente arranque');
 
 await page.getByRole('button', { name: /Ajustes/ }).click();
 await page.getByRole('button', { name: 'Buscar actualizaciones', exact: true }).click();
-await page.getByRole('heading', { name: 'Nueva versión 1.0.99' }).waitFor();
+await page.getByRole('heading', { name: 'Nueva versión 1.0.109' }).waitFor();
 checks.push('La búsqueda manual recupera una versión descartada');
 await page.getByRole('button', { name: 'Descargar y actualizar', exact: true }).focus();
 await page.keyboard.press('Tab');

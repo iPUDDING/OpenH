@@ -5,14 +5,15 @@ import { Compartment, EditorState } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { useAppStore } from '@/store/useAppStore';
+import { isDarkTheme, type Theme } from '@/types';
 
 interface MarkmapEditorProps {
   value: string;
   onChange: (value: string) => void;
 }
 
-function systemIsDark(theme: 'light' | 'dark' | 'system'): boolean {
-  return theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+function systemIsDark(theme: Theme): boolean {
+  return isDarkTheme(theme) || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 }
 
 export function MarkmapEditor({ value, onChange }: MarkmapEditorProps) {

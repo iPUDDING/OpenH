@@ -36,6 +36,46 @@ function pronunciationRules(value: unknown, fallback: PronunciationRule[]): Pron
     return [{ id: item.id.slice(0, 100), from: item.from.slice(0, 200), to: item.to.slice(0, 200), enabled: item.enabled !== false }];
   }).filter((rule) => rule.from.trim() && rule.to.trim()).slice(0, 200);
 }
+function readingPositions(value: unknown, fallback: Record<string, number>): Record<string, number> {
+  if (!object(value)) return fallback;
+  const result: Record<string, number> = {};
+  for (const [key, entry] of Object.entries(value).slice(0, 500)) {
+    if (typeof entry === 'number' && Number.isFinite(entry)) result[key.slice(0, 1000)] = clamp(entry, 0, 1);
+  }
+  return result;
+}
+function bookmarks(value: unknown, fallback: Record<string, import('@/types').Bookmark[]>): Record<string, import('@/types').Bookmark[]> {
+  if (!object(value)) return fallback;
+  const result: Record<string, import('@/types').Bookmark[]> = {};
+  for (const [key, entries] of Object.entries(value).slice(0, 500)) {
+    if (!Array.isArray(entries)) continue;
+    result[key.slice(0, 1000)] = entries.filter(object).flatMap((item) => {
+      if (typeof item.id !== 'string' || typeof item.label !== 'string' || typeof item.position !== 'number') return [];
+      return [{ id: item.id.slice(0, 100), label: item.label.slice(0, 200), position: clamp(item.position, 0, 1), createdAt: number(item.createdAt, 0, 0, Number.MAX_SAFE_INTEGER) }];
+    }).slice(0, 50);
+  }
+  return result;
+}
+function notes(value: unknown, fallback: Record<string, import('@/types').DocNote[]>): Record<string, import('@/types').DocNote[]> {
+  if (!object(value)) return fallback;
+  const result: Record<string, import('@/types').DocNote[]> = {};
+  for (const [key, entries] of Object.entries(value).slice(0, 500)) {
+    if (!Array.isArray(entries)) continue;
+    result[key.slice(0, 1000)] = entries.filter(object).flatMap((item) => {
+      if (typeof item.id !== 'string' || typeof item.text !== 'string') return [];
+      return [{ id: item.id.slice(0, 100), text: item.text.slice(0, 5000), createdAt: number(item.createdAt, 0, 0, Number.MAX_SAFE_INTEGER) }];
+    }).slice(0, 100);
+  }
+  return result;
+}
+function keybindings(value: unknown, fallback: Record<string, string>): Record<string, string> {
+  if (!object(value)) return fallback;
+  const result: Record<string, string> = { ...fallback };
+  for (const [key, entry] of Object.entries(value).slice(0, 50)) {
+    if (typeof entry === 'string' && entry.length <= 40) result[key.slice(0, 50)] = entry;
+  }
+  return result;
+}
 
 export function createWorkspaceBackup(): string {
   const state = useAppStore.getState();
@@ -61,6 +101,11 @@ export function createWorkspaceBackup(): string {
       pronunciationRules: state.pronunciationRules,
       markmapContent: state.markmapContent,
       pomodoro: state.pomodoro,
+      paperTheme: state.paperTheme,
+      readingPositions: state.readingPositions,
+      bookmarks: state.bookmarks,
+      notes: state.notes,
+      keybindings: state.keybindings,
     },
   }, null, 2);
 }
@@ -73,7 +118,7 @@ export function parseWorkspaceBackup(json: string) {
   const data = parsed.data;
   const current = useAppStore.getState();
   return {
-    theme: ['light', 'dark', 'system'].includes(String(data.theme)) ? data.theme as typeof current.theme : current.theme,
+    theme: ['light', 'dark', 'system', 'apple-light', 'apple-dark', 'apple-outline', 'apple-focus'].includes(String(data.theme)) ? data.theme as typeof current.theme : current.theme,
     autoScroll: typeof data.autoScroll === 'boolean' ? data.autoScroll : current.autoScroll,
     readerFontSize: number(data.readerFontSize, current.readerFontSize, 80, 200),
     readerLineHeight: number(data.readerLineHeight, current.readerLineHeight, 1.4, 2.2),
@@ -98,5 +143,10 @@ export function parseWorkspaceBackup(json: string) {
       workMinutes: number(data.pomodoro.workMinutes, current.pomodoro.workMinutes, 5, 60),
       breakMinutes: number(data.pomodoro.breakMinutes, current.pomodoro.breakMinutes, 1, 30),
     } : current.pomodoro,
+    paperTheme: ['white', 'sepia', 'gray', 'black'].includes(String(data.paperTheme)) ? data.paperTheme as typeof current.paperTheme : current.paperTheme,
+    readingPositions: readingPositions(data.readingPositions, current.readingPositions),
+    bookmarks: bookmarks(data.bookmarks, current.bookmarks),
+    notes: notes(data.notes, current.notes),
+    keybindings: keybindings(data.keybindings, current.keybindings),
   };
 }

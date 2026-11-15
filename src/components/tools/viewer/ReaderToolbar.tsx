@@ -25,9 +25,9 @@ export function ReaderToolbar({ controller, onReadSelection, showPomodoro = fals
   ];
 
   return (
-    <div className="border-b bg-card/80 px-3 py-2 backdrop-blur">
+    <div className="reader-toolbar border-b bg-card/80 px-3 py-2 backdrop-blur">
       <div className="flex flex-wrap items-center gap-1.5">
-        <div className="mr-1 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"><Volume2 className="h-4 w-4 text-primary" /> Lectura</div>
+        <div className="reader-toolbar-label mr-1 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"><Volume2 className="h-4 w-4 text-primary" /> Lectura</div>
         {controller.status === 'speaking' ? (
           <Button size="sm" data-tts-control="true" onClick={controller.pause} title="Pausar lectura · Espacio"><Pause className="h-4 w-4" />Pausar</Button>
         ) : controller.status === 'paused' ? (

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Hint } from '@/components/ui/Tooltip';
 import { useAppStore } from '@/store/useAppStore';
 import { useFullscreen } from '@/hooks/useFullscreen';
+import { matchesCombo } from '@/lib/utils';
 import type { ToolId } from '@/types';
 
 const TtsStudio = lazy(() => import('@/components/tools/tts/TtsStudio'));
@@ -22,6 +23,7 @@ export default function App() {
   const activeTool = useAppStore((state) => state.activeTool);
   const setActiveTool = useAppStore((state) => state.setActiveTool);
   const theme = useAppStore((state) => state.theme);
+  const keybindings = useAppStore((state) => state.keybindings);
   const fullscreenState = useFullscreen();
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const [commandsOpen, setCommandsOpen] = useState(false);
@@ -41,32 +43,43 @@ export default function App() {
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)');
     const apply = () => {
-      const dark = theme === 'dark' || (theme === 'system' && media.matches);
+      const dark = theme === 'dark' || theme === 'apple-dark' || (theme === 'system' && media.matches);
       document.documentElement.classList.toggle('dark', dark);
+      if (theme.startsWith('apple-')) {
+        document.documentElement.dataset.theme = theme;
+      } else {
+        delete document.documentElement.dataset.theme;
+      }
     };
     apply();
     media.addEventListener('change', apply);
     return () => media.removeEventListener('change', apply);
   }, [theme]);
 
+  // El tema Foco oculta la barra lateral al activarse (se puede reabrir con el menú).
+  useEffect(() => {
+    if (theme === 'apple-focus') setSidebarOpen(false);
+  }, [theme]);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLocaleLowerCase() === 'k') {
+      if (matchesCombo(event, keybindings.palette ?? 'ctrl+k')) {
         event.preventDefault();
         setCommandsOpen((open) => !open);
         return;
       }
-      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLocaleLowerCase() === 'h') {
+      if (matchesCombo(event, keybindings.toggleHeader ?? 'ctrl+shift+h')) {
         event.preventDefault();
         setHeaderHidden((hidden) => !hidden);
         return;
       }
-      if (event.altKey && /^[1-4]$/.test(event.key)) {
+      const toolIndex = ['tool1', 'tool2', 'tool3', 'tool4'].findIndex((action) => matchesCombo(event, keybindings[action] ?? ''));
+      if (toolIndex !== -1) {
         event.preventDefault();
-        setActiveTool(toolOrder[Number(event.key) - 1]);
+        setActiveTool(toolOrder[toolIndex]);
         return;
       }
-      if ((event.ctrlKey || event.metaKey) && event.key.toLocaleLowerCase() === 'o') {
+      if (matchesCombo(event, keybindings.open ?? 'ctrl+o')) {
         event.preventDefault();
         setActiveTool('viewer');
         window.dispatchEvent(new CustomEvent('openhub:open'));
@@ -74,10 +87,10 @@ export default function App() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [setActiveTool]);
+  }, [keybindings, setActiveTool]);
 
   const panel = (id: ToolId, children: React.ReactNode) => (
-    <div key={id} className="h-full min-h-0" style={{ display: activeTool === id ? 'block' : 'none' }} aria-hidden={activeTool !== id}>
+    <div key={id} className="tool-panel h-full min-h-0" style={{ display: activeTool === id ? 'block' : 'none' }} aria-hidden={activeTool !== id}>
       <ErrorBoundary name={id === 'tts' ? 'el estudio TTS' : id === 'markmap' ? 'el mapa mental' : id === 'settings' ? 'los ajustes' : 'el visor'}>
         {children}
       </ErrorBoundary>

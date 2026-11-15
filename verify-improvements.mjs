@@ -76,7 +76,7 @@ await chooser.setFiles('/tmp/openhub-e2e.pdf');
 await page.locator('canvas').waitFor({ timeout: 20000 });
 await page.waitForTimeout(2500);
 const pdfMeta = await page.locator('section[aria-label="Visor de documentos"] > header p').textContent();
-assert.match(pdfMeta, /^[1-9]\d* palabras$/);
+assert.match(pdfMeta, /^[1-9]\d* palabras · \d+ caracteres · ≈ \d+ min de lectura$/);
 assert.notEqual(pdfMeta, '38 palabras');
 checks.push('El contador del encabezado corresponde al PDF abierto');
 await page.keyboard.press('Control+f');

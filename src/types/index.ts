@@ -1,5 +1,35 @@
 export type ToolId = 'viewer' | 'tts' | 'markmap' | 'settings';
-export type Theme = 'light' | 'dark' | 'system';
+export type Theme = 'light' | 'dark' | 'system' | 'apple-light' | 'apple-dark' | 'apple-outline' | 'apple-focus';
+
+/** Papel del documento en el visor (modo noche para el texto). */
+export type PaperTheme = 'white' | 'sepia' | 'gray' | 'black';
+
+/** Marcador de posición de lectura dentro de un documento. */
+export interface Bookmark {
+  id: string;
+  label: string;
+  /** Progreso 0–1 dentro del documento. */
+  position: number;
+  createdAt: number;
+}
+
+/** Nota del usuario asociada a un documento. */
+export interface DocNote {
+  id: string;
+  text: string;
+  createdAt: number;
+}
+
+/** Temas visuales estilo Apple disponibles en la sección Temas de Ajustes. */
+export const APPLE_THEMES: Theme[] = ['apple-light', 'apple-dark', 'apple-outline', 'apple-focus'];
+
+export function isAppleTheme(theme: Theme): boolean {
+  return APPLE_THEMES.includes(theme);
+}
+
+export function isDarkTheme(theme: Theme): boolean {
+  return theme === 'dark' || theme === 'apple-dark';
+}
 export type DocumentKind = 'markdown' | 'pdf' | 'docx' | 'pptx' | 'xlsx';
 export type ViewerMode = 'preview' | 'split';
 

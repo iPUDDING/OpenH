@@ -54,14 +54,41 @@ export function CommandPalette({ open, onClose, onToggleSidebar, onToggleHeader,
     ];
   }, [fullscreen, onToggleFullscreen, onToggleHeader, onToggleSidebar, pomodoro, recents, setActiveTool, setTheme, theme]);
 
+  // Búsqueda global: además de comandos, busca dentro del contenido de los
+  // documentos recientes (Markdown) y muestra el fragmento coincidente.
+  const contentMatches = useMemo(() => {
+    const needle = normalizeSearchText(query).trim();
+    if (needle.length < 2) return [] as Command[];
+    const results: Command[] = [];
+    for (const recent of recents) {
+      if (recent.kind !== 'markdown' || !recent.content) continue;
+      const haystack = normalizeSearchText(recent.content);
+      const index = haystack.indexOf(needle);
+      if (index === -1) continue;
+      const start = Math.max(0, index - 40);
+      const snippet = recent.content.slice(start, index + needle.length + 60).replace(/\s+/g, ' ').trim();
+      results.push({
+        id: `content-${recent.id}`,
+        title: recent.name,
+        detail: `…${snippet}…`,
+        keywords: 'contenido texto buscar',
+        icon: FileText,
+        action: () => { setActiveTool('viewer'); window.dispatchEvent(new CustomEvent('openhub:recent', { detail: recent })); },
+      });
+      if (results.length >= 6) break;
+    }
+    return results;
+  }, [query, recents, setActiveTool]);
+
   const filtered = useMemo(() => {
     const terms = normalizeSearchText(query).split(/\s+/).filter(Boolean);
     if (!terms.length) return commands;
-    return commands.filter((command) => {
+    const matched = commands.filter((command) => {
       const haystack = normalizeSearchText(`${command.title} ${command.detail} ${command.keywords}`);
       return terms.every((term) => haystack.includes(term));
     });
-  }, [commands, query]);
+    return [...matched, ...contentMatches];
+  }, [commands, contentMatches, query]);
 
   useEffect(() => {
     if (!open) return;

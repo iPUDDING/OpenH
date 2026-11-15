@@ -2,7 +2,10 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { clamp } from '@/lib/utils';
 import type {
+  Bookmark,
+  DocNote,
   DocumentKind,
+  PaperTheme,
   PomodoroSettings,
   PronunciationRule,
   RecentDocument,
@@ -43,6 +46,11 @@ export interface AppState {
   pronunciationRules: PronunciationRule[];
   markmapContent: string;
   pomodoro: PomodoroSettings;
+  paperTheme: PaperTheme;
+  readingPositions: Record<string, number>;
+  bookmarks: Record<string, Bookmark[]>;
+  notes: Record<string, DocNote[]>;
+  keybindings: Record<string, string>;
   setActiveTool: (tool: ToolId) => void;
   setTheme: (theme: Theme) => void;
   setAutoScroll: (enabled: boolean) => void;
@@ -60,7 +68,26 @@ export interface AppState {
   setPronunciationRules: (rules: PronunciationRule[]) => void;
   setMarkmapContent: (content: string) => void;
   setPomodoroSettings: (settings: Partial<PomodoroSettings>) => void;
+  setPaperTheme: (paperTheme: PaperTheme) => void;
+  setReadingPosition: (documentId: string, position: number) => void;
+  addBookmark: (documentId: string, bookmark: Bookmark) => void;
+  removeBookmark: (documentId: string, bookmarkId: string) => void;
+  addNote: (documentId: string, note: DocNote) => void;
+  removeNote: (documentId: string, noteId: string) => void;
+  setKeybinding: (action: string, combo: string) => void;
+  resetKeybindings: () => void;
 }
+
+export const DEFAULT_KEYBINDINGS: Record<string, string> = {
+  palette: 'ctrl+k',
+  fullscreen: 'f11',
+  toggleHeader: 'ctrl+shift+h',
+  open: 'ctrl+o',
+  tool1: 'alt+1',
+  tool2: 'alt+2',
+  tool3: 'alt+3',
+  tool4: 'alt+4',
+};
 
 const initialTts: TtsSettings = { voiceURI: '', rate: 1, pitch: 1, volume: 1 };
 
@@ -88,6 +115,11 @@ export const useAppStore = create<AppState>()(
       pronunciationRules: [],
       markmapContent: DEFAULT_MARKMAP,
       pomodoro: { workMinutes: 25, breakMinutes: 5 },
+      paperTheme: 'white',
+      readingPositions: {},
+      bookmarks: {},
+      notes: {},
+      keybindings: { ...DEFAULT_KEYBINDINGS },
       setActiveTool: (activeTool) => set({ activeTool }),
       setTheme: (theme) => set({ theme }),
       setAutoScroll: (autoScroll) => set({ autoScroll }),
@@ -155,6 +187,26 @@ export const useAppStore = create<AppState>()(
       setPronunciationRules: (pronunciationRules) => set({ pronunciationRules }),
       setMarkmapContent: (markmapContent) => set({ markmapContent }),
       setPomodoroSettings: (settings) => set((state) => ({ pomodoro: { ...state.pomodoro, ...settings } })),
+      setPaperTheme: (paperTheme) => set({ paperTheme }),
+      setReadingPosition: (documentId, position) => set((state) => {
+        const clamped = Math.round(Math.min(1, Math.max(0, position)) * 1000) / 1000;
+        if (state.readingPositions[documentId] === clamped) return state;
+        return { readingPositions: { ...state.readingPositions, [documentId]: clamped } };
+      }),
+      addBookmark: (documentId, bookmark) => set((state) => ({
+        bookmarks: { ...state.bookmarks, [documentId]: [...(state.bookmarks[documentId] ?? []), bookmark].slice(-50) },
+      })),
+      removeBookmark: (documentId, bookmarkId) => set((state) => ({
+        bookmarks: { ...state.bookmarks, [documentId]: (state.bookmarks[documentId] ?? []).filter((item) => item.id !== bookmarkId) },
+      })),
+      addNote: (documentId, note) => set((state) => ({
+        notes: { ...state.notes, [documentId]: [...(state.notes[documentId] ?? []), note].slice(-100) },
+      })),
+      removeNote: (documentId, noteId) => set((state) => ({
+        notes: { ...state.notes, [documentId]: (state.notes[documentId] ?? []).filter((item) => item.id !== noteId) },
+      })),
+      setKeybinding: (action, combo) => set((state) => ({ keybindings: { ...state.keybindings, [action]: combo } })),
+      resetKeybindings: () => set({ keybindings: { ...DEFAULT_KEYBINDINGS } }),
     }),
     {
       name: 'openhub-store',
@@ -177,6 +229,11 @@ export const useAppStore = create<AppState>()(
         pronunciationRules: state.pronunciationRules,
         markmapContent: state.markmapContent,
         pomodoro: state.pomodoro,
+        paperTheme: state.paperTheme,
+        readingPositions: state.readingPositions,
+        bookmarks: state.bookmarks,
+        notes: state.notes,
+        keybindings: state.keybindings,
       }),
     },
   ),

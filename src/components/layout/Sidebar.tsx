@@ -15,6 +15,7 @@ const tools = [
 ];
 
 export function Sidebar({ open, headerHidden = false }: { open: boolean; headerHidden?: boolean }) {
+  const theme = useAppStore((state) => state.theme);
   const active = useAppStore((state) => state.activeTool);
   const setActive = useAppStore((state) => state.setActiveTool);
   const recents = useAppStore((state) => state.recents);
@@ -76,8 +77,11 @@ export function Sidebar({ open, headerHidden = false }: { open: boolean; headerH
     }
   }, [editingId, recents]);
 
+  // En el tema Foco, cerrada significa totalmente oculta (como en la referencia).
+  const focusHidden = theme === 'apple-focus' && !open;
+
   return (
-    <aside className={cn('z-30 flex shrink-0 flex-col border-r bg-card transition-[width] duration-200 max-lg:absolute max-lg:bottom-0 max-lg:left-0 max-lg:shadow-xl', headerHidden ? 'max-lg:top-0' : 'max-lg:top-14', open ? 'w-60' : 'w-16 max-lg:w-0 max-lg:overflow-hidden')} aria-label="Navegación principal">
+    <aside className={cn('z-30 flex shrink-0 flex-col border-r bg-card transition-[width] duration-200 max-lg:absolute max-lg:bottom-0 max-lg:left-0 max-lg:shadow-xl', headerHidden ? 'max-lg:top-0' : 'max-lg:top-14', open ? 'w-60' : focusHidden ? 'w-0 overflow-hidden border-r-0' : 'w-16 max-lg:w-0 max-lg:overflow-hidden')} aria-label="Navegación principal">
       <nav className="space-y-1 p-2">
         {tools.map(({ id, label, icon: Icon, shortcut, color }) => {
           const button = (

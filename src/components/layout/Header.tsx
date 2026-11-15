@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/Button';
 import { Hint } from '@/components/ui/Tooltip';
 import { useAppStore } from '@/store/useAppStore';
 import { useAppVersion } from '@/hooks/useAppVersion';
+import { isAppleTheme, isDarkTheme } from '@/types';
 
 interface FullscreenState {
   fullscreen: boolean;
@@ -16,10 +17,17 @@ export function Header({ onToggleSidebar, onOpenCommands, onHide, fullscreenStat
   const setTheme = useAppStore((state) => state.setTheme);
   const version = useAppVersion();
   const { fullscreen, supported, error, toggleFullscreen } = fullscreenState;
-  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const isDark = isDarkTheme(theme) || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const apple = isAppleTheme(theme);
+
+  // En temas Apple el botón alterna entre Apple claro y Apple oscuro.
+  const toggleTheme = () => {
+    if (apple) setTheme(theme === 'apple-dark' ? 'apple-light' : 'apple-dark');
+    else setTheme(isDark ? 'light' : 'dark');
+  };
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-card px-3 md:px-4">
+    <header className={apple ? 'apple-header flex h-14 shrink-0 items-center gap-3 border-b px-3 md:px-4' : 'flex h-14 shrink-0 items-center gap-3 border-b bg-card px-3 md:px-4'}>
       <Button variant="ghost" size="icon-sm" onClick={onToggleSidebar} aria-label="Alternar barra lateral"><Menu className="h-5 w-5" /></Button>
       <div className="flex items-center gap-2.5">
         <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary font-black text-primary-foreground shadow-sm">O</div>
@@ -32,7 +40,7 @@ export function Header({ onToggleSidebar, onOpenCommands, onHide, fullscreenStat
       <div className="flex items-center gap-2">
         <span className="hidden text-xs text-muted-foreground lg:inline">v{version}</span>
         <Hint label={isDark ? 'Usar tema claro' : 'Usar tema oscuro'}>
-          <Button variant="ghost" size="icon-sm" onClick={() => setTheme(isDark ? 'light' : 'dark')} aria-label="Cambiar tema">{isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button>
+          <Button variant="ghost" size="icon-sm" onClick={toggleTheme} aria-label="Cambiar tema">{isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</Button>
         </Hint>
         <Hint label={!supported ? 'Pantalla completa no disponible' : fullscreen ? 'Salir de pantalla completa · F11' : 'Pantalla completa · F11'}>
           <Button variant={fullscreen ? 'secondary' : 'ghost'} size="icon-sm" onClick={() => void toggleFullscreen()} disabled={!supported} aria-label={fullscreen ? 'Salir de pantalla completa' : 'Poner pantalla completa'} aria-pressed={fullscreen}>

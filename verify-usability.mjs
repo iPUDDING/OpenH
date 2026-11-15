@@ -149,6 +149,53 @@ await page.keyboard.press('Control+Shift+h');
 await page.getByRole('button', { name: 'Abrir paleta de comandos' }).waitFor();
 checks.push('El atajo alterna la barra en ambos sentidos');
 
+// --- Temas Apple (sección Temas de Ajustes) ---
+await page.getByRole('button', { name: /Ajustes/ }).first().click();
+await page.getByRole('heading', { name: 'Temas' }).waitFor();
+await page.getByRole('button', { name: /Apple Claro/ }).click();
+await page.waitForFunction(() => document.documentElement.dataset.theme === 'apple-light');
+assert.equal(await page.locator('.apple-traffic-lights').count(), 0);
+checks.push('Tema Apple Claro: data-theme y cristal aplicados, sin semáforos');
+await page.getByRole('button', { name: /Documentos/ }).first().click();
+await page.waitForTimeout(400);
+const toolbarPosition = await page.locator('.reader-toolbar').evaluate((node) => getComputedStyle(node).position);
+assert.equal(toolbarPosition, 'absolute');
+checks.push('Barra de lectura flotante posicionada en temas Apple');
+await page.screenshot({ path: `${output}27-tema-apple-claro.png`, animations: 'disabled' });
+
+await page.getByRole('button', { name: /Ajustes/ }).first().click();
+await page.getByRole('button', { name: /Apple Oscuro/ }).click();
+await page.waitForFunction(() => document.documentElement.dataset.theme === 'apple-dark' && document.documentElement.classList.contains('dark'));
+checks.push('Tema Apple Oscuro: data-theme y clase dark aplicadas');
+await page.getByRole('button', { name: /Documentos/ }).first().click();
+await page.waitForTimeout(400);
+await page.screenshot({ path: `${output}28-tema-apple-oscuro.png`, animations: 'disabled' });
+
+await page.getByRole('button', { name: /Ajustes/ }).first().click();
+await page.getByRole('button', { name: /Apple con Índice/ }).click();
+await page.waitForFunction(() => document.documentElement.dataset.theme === 'apple-outline');
+await page.getByRole('button', { name: /Documentos/ }).first().click();
+await page.waitForTimeout(400);
+assert.equal(await page.getByLabel('Índice del documento').count(), 1);
+checks.push('Tema Apple con Índice: panel de índice visible por defecto');
+await page.screenshot({ path: `${output}29-tema-apple-indice.png`, animations: 'disabled' });
+
+await page.getByRole('button', { name: /Ajustes/ }).first().click();
+await page.getByRole('button', { name: /Apple Foco/ }).click();
+await page.waitForFunction(() => document.documentElement.dataset.theme === 'apple-focus');
+await page.waitForTimeout(400);
+assert.equal(await page.locator('aside[aria-label="Navegación principal"]').evaluate((node) => node.classList.contains('w-0')), true);
+checks.push('Tema Apple Foco: barra lateral totalmente oculta al activarse');
+// Ir al visor con Alt+1 (la barra sigue oculta) y capturar el modo foco real.
+await page.keyboard.press('Alt+1');
+await page.waitForTimeout(400);
+await page.screenshot({ path: `${output}30-tema-apple-foco.png`, animations: 'disabled' });
+
+await page.keyboard.press('Alt+4');
+await page.getByRole('button', { name: 'Claro', exact: true }).click();
+await page.waitForFunction(() => !document.documentElement.dataset.theme);
+checks.push('Volver al tema Claro restaura el aspecto clásico');
+
 console.log(JSON.stringify({ checks, errors }, null, 2));
 assert.equal(errors.length, 0, `Errores de ejecución: ${errors.join('\n')}`);
 await browser.close();

@@ -181,7 +181,7 @@ await tauriPage.addInitScript(({ filePath, bytes }) => {
     unregisterCallback: () => undefined,
     invoke: async (command) => {
       window.__tauriCommands.push(command);
-      if (command === 'plugin:app|version') return '1.2.0';
+      if (command === 'plugin:app|version') return '1.4.0';
       if (command === 'plugin:event|listen') return 1;
       if (command === 'plugin:updater|check') return null;
       if (command === 'plugin:dialog|open') return filePath;
@@ -628,6 +628,43 @@ assert.equal(await officePage.getByText('xlsx', { exact: true }).count(), 1);
 await officePage.screenshot({ path: `${output}25-xlsx.png`, animations: 'disabled' });
 checks.push('XLSX real: dos hojas en orden con tablas, valores e hipervínculo');
 await officeContext.close();
+
+// --- Experiencia de lectura: progreso, papel, marcadores, notas y estadísticas ---
+const readingContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'es-ES' });
+const readingPage = await readingContext.newPage();
+watch(readingPage);
+await readingPage.goto('http://127.0.0.1:1420', { waitUntil: 'networkidle' });
+await readingPage.getByLabel('Markdown inicial').fill('# Guía de lectura\n\nPrimer párrafo con contenido suficiente para medir el progreso de lectura del documento completo.\n\nSegundo párrafo del documento para que haya desplazamiento vertical.\n\nTercer párrafo final del documento de prueba.');
+await readingPage.getByRole('button', { name: 'Abrir borrador' }).click();
+await readingPage.locator('.markdown-body p').first().waitFor();
+// Barra de progreso visible con rol progressbar.
+assert.equal(await readingPage.getByRole('progressbar', { name: 'Progreso de lectura' }).count(), 1);
+checks.push('Barra de progreso de lectura visible en el visor');
+// Estadísticas en el subtítulo: palabras, caracteres y minutos.
+const subtitle = await readingPage.locator('header p.truncate').first().innerText();
+assert.match(subtitle, /palabras/);
+assert.match(subtitle, /caracteres/);
+assert.match(subtitle, /min de lectura/);
+checks.push('Estadísticas del documento (palabras, caracteres, minutos) en el encabezado');
+// Cambiar el papel a sepia.
+await readingPage.getByRole('button', { name: 'Cambiar papel del documento' }).click();
+await readingPage.getByRole('menuitemradio', { name: 'Sepia' }).click();
+await readingPage.waitForFunction(() => document.querySelector('.paper-sepia') !== null);
+checks.push('Papel sepia aplicado al área del documento');
+// Añadir marcador y nota, y verlos en el panel.
+await readingPage.getByRole('button', { name: 'Añadir marcador' }).click();
+await readingPage.getByRole('button', { name: 'Mostrar notas' }).click();
+await readingPage.getByLabel('Nueva nota').fill('Nota de prueba para el documento.');
+await readingPage.getByRole('button', { name: 'Añadir nota' }).click();
+await readingPage.getByText('Nota de prueba para el documento.').waitFor();
+assert.equal(await readingPage.getByText(/Marcador ·/).count(), 1);
+checks.push('Marcador y nota guardados y visibles en el panel');
+await readingPage.screenshot({ path: `${output}31-notas-marcadores.png`, animations: 'disabled' });
+// La posición se persiste: recargar y comprobar que el papel sigue en sepia.
+await readingPage.reload({ waitUntil: 'networkidle' });
+await readingPage.waitForFunction(() => document.querySelector('.paper-sepia') !== null);
+checks.push('El papel elegido persiste tras recargar');
+await readingContext.close();
 
 console.log(JSON.stringify({ checks, errors }, null, 2));
 assert.equal(errors.length, 0, `Errores de ejecución: ${errors.join('\n')}`);

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
-import { Check, Columns2, Download, FileText, FolderOpen, ListTree, Loader2, Minus, PanelTop, Pencil, Plus, UploadCloud, X } from 'lucide-react';
+import { Bookmark as BookmarkIcon, BookmarkPlus, Check, Columns2, Download, FileText, FolderOpen, ListTree, Loader2, Minus, Palette, PanelTop, Pencil, Plus, Printer, StickyNote, Trash2, UploadCloud, X } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReaderToolbar } from './ReaderToolbar';
@@ -20,7 +20,7 @@ import { applyDashSpeech } from '@/lib/dashSpeech';
 import { selectedDocumentText } from '@/lib/selection';
 import { basename } from '@/lib/utils';
 import { segmentIndexAtPoint, type DocumentTextMap } from '@/lib/domTextMap';
-import type { OpenedDocument, RecentDocument, SpeechSegment } from '@/types';
+import type { Bookmark, DocNote, OpenedDocument, PaperTheme, RecentDocument, SpeechSegment } from '@/types';
 
 const PdfRenderer = lazy(() => import('./PdfRenderer').then((module) => ({ default: module.PdfRenderer })));
 const OfficeRenderer = lazy(() => import('./OfficeRenderer').then((module) => ({ default: module.OfficeRenderer })));
@@ -51,6 +51,17 @@ export default function DocumentViewer() {
   const addRecent = useAppStore((state) => state.addRecent);
   const renameRecent = useAppStore((state) => state.renameRecent);
   const autoScroll = useAppStore((state) => state.autoScroll);
+  const theme = useAppStore((state) => state.theme);
+  const paperTheme = useAppStore((state) => state.paperTheme);
+  const setPaperTheme = useAppStore((state) => state.setPaperTheme);
+  const readingPositions = useAppStore((state) => state.readingPositions);
+  const setReadingPosition = useAppStore((state) => state.setReadingPosition);
+  const bookmarks = useAppStore((state) => state.bookmarks);
+  const addBookmark = useAppStore((state) => state.addBookmark);
+  const removeBookmark = useAppStore((state) => state.removeBookmark);
+  const notes = useAppStore((state) => state.notes);
+  const addNote = useAppStore((state) => state.addNote);
+  const removeNote = useAppStore((state) => state.removeNote);
   const pronunciationRules = useAppStore((state) => state.pronunciationRules);
   const setActiveTool = useAppStore((state) => state.setActiveTool);
   const setActiveDocumentId = useAppStore((state) => state.setActiveDocumentId);
@@ -73,8 +84,16 @@ export default function DocumentViewer() {
   const [pdfPage, setPdfPage] = useState(1);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; segmentIndex: number } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [outlineOpen, setOutlineOpen] = useState(false);
+  const [outlineOpen, setOutlineOpen] = useState(() => theme === 'apple-outline');
+  // El tema Outline abre el índice al activarse; el tema Foco lo cierra.
+  useEffect(() => {
+    if (theme === 'apple-outline') setOutlineOpen(true);
+    else if (theme === 'apple-focus') setOutlineOpen(false);
+  }, [theme]);
   const [selectionText, setSelectionText] = useState('');
+  const [progress, setProgress] = useState(0);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [noteDraft, setNoteDraft] = useState('');
   const [renamingHeader, setRenamingHeader] = useState(false);
   const [headerDraftName, setHeaderDraftName] = useState('');
   const sectionRef = useRef<HTMLElement>(null);
@@ -240,6 +259,36 @@ export default function DocumentViewer() {
     if (saved) setNotice('Documento guardado correctamente.');
   };
 
+  const addCurrentBookmark = useCallback(() => {
+    if (!current) return;
+    const percent = Math.round(progress * 100);
+    addBookmark(current.id, {
+      id: globalThis.crypto?.randomUUID?.() ?? `bm-${Date.now()}-${Math.random()}`,
+      label: `Marcador · ${percent}%`,
+      position: progress,
+      createdAt: Date.now(),
+    });
+    setNotice(`Marcador guardado en el ${percent}% del documento.`);
+  }, [addBookmark, current, progress]);
+
+  const goToBookmark = useCallback((position: number) => {
+    const scroller = previewScrollRef.current;
+    if (!scroller) return;
+    const max = scroller.scrollHeight - scroller.clientHeight;
+    if (max > 0) scroller.scrollTop = position * max;
+  }, []);
+
+  const exportHtml = async () => {
+    if (!current) return;
+    const body = previewScrollRef.current?.querySelector('.markdown-body')?.innerHTML
+      ?? `<pre>${markdown.replace(/</g, '&lt;')}</pre>`;
+    const title = current.name.replace(/\.[^.]+$/, '');
+    const html = `<!DOCTYPE html>\n<html lang="es">\n<head>\n<meta charset="utf-8">\n<title>${title} — OpenHub</title>\n<style>body{font-family:Georgia,serif;max-width:720px;margin:40px auto;padding:0 20px;line-height:1.7;color:#1d1d1f}h1,h2,h3{line-height:1.25}pre{background:#f5f5f7;padding:16px;border-radius:8px;overflow:auto}code{background:#f5f5f7;padding:2px 6px;border-radius:4px}table{border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px 12px}</style>\n</head>\n<body>\n${body}\n</body>\n</html>`;
+    const suggestedName = `${title}.html`;
+    const saved = await files.saveFile(html, { suggestedName, extensions: ['html'], filterName: 'HTML' });
+    if (saved) setNotice('Documento exportado como HTML.');
+  };
+
   useEffect(() => {
     if (!isMarkdownDocument(current)) return;
     const timeout = window.setTimeout(() => {
@@ -360,6 +409,54 @@ export default function DocumentViewer() {
   const handleTextMap = useCallback((map: DocumentTextMap | null) => setTextMap(map), []);
   const handlePdfSegments = useCallback((next: SpeechSegment[]) => setPdfSegments(next), []);
 
+  // Progreso de lectura + persistencia de posición (con debounce).
+  const positionSaveRef = useRef<number | null>(null);
+  const currentIdRef = useRef<string | null>(null);
+  currentIdRef.current = current?.id ?? null;
+  useEffect(() => {
+    const scroller = previewScrollRef.current;
+    if (!scroller) return;
+    const onScroll = () => {
+      const max = scroller.scrollHeight - scroller.clientHeight;
+      const ratio = max > 0 ? scroller.scrollTop / max : 0;
+      setProgress(Math.round(ratio * 1000) / 1000);
+      const id = currentIdRef.current;
+      if (!id) return;
+      if (positionSaveRef.current) window.clearTimeout(positionSaveRef.current);
+      positionSaveRef.current = window.setTimeout(() => setReadingPosition(id, ratio), 400);
+    };
+    scroller.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => {
+      scroller.removeEventListener('scroll', onScroll);
+      if (positionSaveRef.current) window.clearTimeout(positionSaveRef.current);
+    };
+  }, [current?.id, setReadingPosition]);
+
+  // Restaurar la posición guardada al abrir un documento.
+  useEffect(() => {
+    if (!current?.id) return;
+    const saved = readingPositions[current.id];
+    const scroller = previewScrollRef.current;
+    if (saved === undefined || !scroller) return;
+    const restore = () => {
+      const max = scroller.scrollHeight - scroller.clientHeight;
+      if (max > 0) scroller.scrollTop = saved * max;
+    };
+    const raf = window.requestAnimationFrame(restore);
+    const timer = window.setTimeout(restore, 350);
+    return () => { window.cancelAnimationFrame(raf); window.clearTimeout(timer); };
+    // Solo al cambiar de documento, no en cada scroll.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.id]);
+
+  const documentCharCount = useMemo(() => {
+    if (current?.kind === 'pdf') return pdfSegments.map((s) => s.sourceText ?? s.text).join('\n').length;
+    if (current?.kind === 'docx' || current?.kind === 'pptx' || current?.kind === 'xlsx') return textMap?.segments.map((s) => s.text).join('\n').length ?? 0;
+    return markdown.length;
+  }, [current?.kind, markdown, pdfSegments, textMap]);
+  const readingMinutes = Math.max(1, Math.round(documentWordCount / 200));
+
   // Clic derecho sobre el documento: si el cursor está sobre un párrafo
   // mapeado, se ofrece "Empezar lectura desde aquí"; si no, menú nativo.
   const onReaderContextMenu = useCallback((event: React.MouseEvent) => {
@@ -380,10 +477,14 @@ export default function DocumentViewer() {
     setContextMenu({ x: event.clientX, y: event.clientY, segmentIndex: index });
   }, [pdfPage, pdfSegments]);
 
+  const appleTheme = theme.startsWith('apple-');
+  // En el tema Outline el índice va a la derecha, como en la referencia.
+  const outlineOnRight = theme === 'apple-outline';
+
   return (
     <section
       ref={sectionRef}
-      className="flex h-full min-h-0 flex-col"
+      className="relative flex h-full min-h-0 flex-col"
       onMouseUp={syncSelection}
       onKeyUp={syncSelection}
       onSelect={syncSelection}
@@ -457,7 +558,7 @@ export default function DocumentViewer() {
             ) : (
               <h1 className="truncate text-sm font-semibold">Visor de documentos</h1>
             )}
-            <p className="truncate text-xs text-muted-foreground">{current?.path || (current ? `${documentWordCount} palabras` : 'Markdown, TXT, PDF, DOCX, PPTX y XLSX')}</p>
+            <p className="truncate text-xs text-muted-foreground">{current?.path || (current ? `${documentWordCount} palabras · ${documentCharCount} caracteres · ≈ ${readingMinutes} min de lectura` : 'Markdown, TXT, PDF, DOCX, PPTX y XLSX')}</p>
           </div>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-1.5">
@@ -490,6 +591,15 @@ export default function DocumentViewer() {
               <Hint label="Índice del documento"><Button variant={outlineOpen ? 'secondary' : 'ghost'} size="icon-sm" onClick={() => setOutlineOpen((open) => !open)} disabled={!headings.length} aria-label="Mostrar índice"><ListTree className="h-4 w-4" /></Button></Hint>
             </>
           )}
+          {current && (
+            <>
+              <PaperThemeMenu paperTheme={paperTheme} onSelect={setPaperTheme} />
+              <Hint label="Añadir marcador en la posición actual"><Button variant="ghost" size="icon-sm" onClick={addCurrentBookmark} aria-label="Añadir marcador"><BookmarkPlus className="h-4 w-4" /></Button></Hint>
+              <Hint label="Notas del documento"><Button variant={notesOpen ? 'secondary' : 'ghost'} size="icon-sm" onClick={() => setNotesOpen((open) => !open)} aria-label="Mostrar notas"><StickyNote className="h-4 w-4" /></Button></Hint>
+              <Hint label="Exportar documento como HTML"><Button variant="ghost" size="icon-sm" onClick={() => void exportHtml()} disabled={files.busy} aria-label="Exportar como HTML"><Download className="h-4 w-4" /></Button></Hint>
+              <Hint label="Imprimir o guardar como PDF"><Button variant="ghost" size="icon-sm" onClick={() => window.print()} aria-label="Imprimir documento"><Printer className="h-4 w-4" /></Button></Hint>
+            </>
+          )}
           {isMarkdown && <Hint label="Guardar Markdown"><Button variant="ghost" size="icon-sm" onClick={() => void saveMarkdown()} disabled={files.busy} aria-label="Guardar Markdown"><Download className="h-4 w-4" /></Button></Hint>}
           <Button size="sm" onClick={() => void openDialog()} disabled={files.busy}><FolderOpen className="h-4 w-4" />Abrir</Button>
         </div>
@@ -499,6 +609,12 @@ export default function DocumentViewer() {
         <div role="status" className="flex items-center justify-between gap-3 border-b bg-primary/5 px-4 py-2 text-xs text-muted-foreground">
           <span>{files.error || notice}</span>
           <Button variant="ghost" size="sm" onClick={() => { files.clearError(); setNotice(null); }}>Cerrar</Button>
+        </div>
+      )}
+
+      {current && (
+        <div className="reading-progress" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100} aria-label="Progreso de lectura">
+          <span style={{ width: `${Math.round(progress * 100)}%` }} />
         </div>
       )}
 
@@ -538,20 +654,40 @@ export default function DocumentViewer() {
                 </div>
               )}
               <div className="flex min-h-0 bg-card">
-                {outlineOpen && headings.length > 0 && <DocumentOutline headings={headings} />}
-                <div ref={previewScrollRef} className="min-h-0 flex-1 overflow-auto">
+                {!outlineOnRight && outlineOpen && headings.length > 0 && <DocumentOutline headings={headings} />}
+                <div ref={previewScrollRef} className={`${paperTheme !== 'white' ? `paper-${paperTheme}` : ''} ${appleTheme ? 'min-h-0 flex-1 overflow-auto pb-28' : 'min-h-0 flex-1 overflow-auto'}`}>
                   <MarkdownRenderer content={markdown} documentPath={current.path} position={tts.position} autoScroll={autoScroll} onTextMap={handleTextMap} />
                 </div>
+                {outlineOnRight && outlineOpen && headings.length > 0 && <DocumentOutline headings={headings} />}
+                {notesOpen && current && (
+                  <NotesPanel
+                    documentId={current.id}
+                    docNotes={notes[current.id] ?? []}
+                    docBookmarks={bookmarks[current.id] ?? []}
+                    draft={noteDraft}
+                    onDraftChange={setNoteDraft}
+                    onAddNote={() => {
+                      const text = noteDraft.trim();
+                      if (!text) return;
+                      addNote(current.id, { id: globalThis.crypto?.randomUUID?.() ?? `note-${Date.now()}-${Math.random()}`, text, createdAt: Date.now() });
+                      setNoteDraft('');
+                    }}
+                    onRemoveNote={(noteId) => removeNote(current.id, noteId)}
+                    onGoToBookmark={goToBookmark}
+                    onRemoveBookmark={(bookmarkId) => removeBookmark(current.id, bookmarkId)}
+                  />
+                )}
               </div>
             </div>
           ) : (current.kind === 'docx' || current.kind === 'pptx' || current.kind === 'xlsx') && current.data ? (
             <div ref={officeAreaRef} onContextMenu={onReaderContextMenu} className="flex min-h-0 flex-1 bg-card">
-              {outlineOpen && headings.length > 0 && <DocumentOutline headings={headings} />}
-              <div ref={previewScrollRef} className="min-h-0 flex-1 overflow-auto">
+              {!outlineOnRight && outlineOpen && headings.length > 0 && <DocumentOutline headings={headings} />}
+              <div ref={previewScrollRef} className={`${paperTheme !== 'white' ? `paper-${paperTheme}` : ''} ${appleTheme ? 'min-h-0 flex-1 overflow-auto pb-28' : 'min-h-0 flex-1 overflow-auto'}`}>
                 <Suspense fallback={<div className="grid flex-1 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /><span className="sr-only">Convirtiendo documento</span></div>}>
                   <OfficeRenderer kind={current.kind} data={current.data} position={tts.position} autoScroll={autoScroll} onTextMap={handleTextMap} />
                 </Suspense>
               </div>
+              {outlineOnRight && outlineOpen && headings.length > 0 && <DocumentOutline headings={headings} />}
             </div>
           ) : current.data ? (
             <div onContextMenu={onPdfContextMenu} className="flex min-h-0 flex-1 flex-col">
@@ -573,5 +709,113 @@ export default function DocumentViewer() {
         />
       )}
     </section>
+  );
+}
+
+const PAPER_OPTIONS: Array<{ id: PaperTheme; label: string; swatch: string }> = [
+  { id: 'white', label: 'Blanco', swatch: '#ffffff' },
+  { id: 'sepia', label: 'Sepia', swatch: '#fbf3e4' },
+  { id: 'gray', label: 'Gris nocturno', swatch: '#2b2b30' },
+  { id: 'black', label: 'Negro', swatch: '#000000' },
+];
+
+function PaperThemeMenu({ paperTheme, onSelect }: { paperTheme: PaperTheme; onSelect: (theme: PaperTheme) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open ]);
+  return (
+    <div ref={ref} className="relative">
+      <Hint label="Papel del documento (modo noche)">
+        <Button variant="ghost" size="icon-sm" onClick={() => setOpen((value) => !value)} aria-label="Cambiar papel del documento" aria-expanded={open}>
+          <Palette className="h-4 w-4" />
+        </Button>
+      </Hint>
+      {open && (
+        <div className="absolute right-0 top-full z-40 mt-1 w-44 rounded-lg border bg-card p-1.5 shadow-xl animate-fade-in" role="menu" aria-label="Papel del documento">
+          {PAPER_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              role="menuitemradio"
+              aria-checked={paperTheme === option.id}
+              onClick={() => { onSelect(option.id); setOpen(false); }}
+              className={`flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-xs transition hover:bg-accent ${paperTheme === option.id ? 'bg-primary/10 font-medium text-primary' : ''}`}
+            >
+              <span className="h-4 w-4 shrink-0 rounded-full border border-black/15 shadow-inner" style={{ background: option.swatch }} />
+              {option.label}
+              {paperTheme === option.id && <Check className="ml-auto h-3.5 w-3.5" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface NotesPanelProps {
+  documentId: string;
+  docNotes: DocNote[];
+  docBookmarks: Bookmark[];
+  draft: string;
+  onDraftChange: (value: string) => void;
+  onAddNote: () => void;
+  onRemoveNote: (noteId: string) => void;
+  onGoToBookmark: (position: number) => void;
+  onRemoveBookmark: (bookmarkId: string) => void;
+}
+
+function NotesPanel({ docNotes, docBookmarks, draft, onDraftChange, onAddNote, onRemoveNote, onGoToBookmark, onRemoveBookmark }: NotesPanelProps) {
+  return (
+    <aside className="hidden w-64 shrink-0 overflow-y-auto border-l bg-muted/20 p-3 md:block" aria-label="Notas y marcadores del documento">
+      <div className="mb-3 flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <StickyNote className="h-3.5 w-3.5" />Notas
+      </div>
+      <div className="mb-4">
+        <Textarea
+          value={draft}
+          onChange={(event) => onDraftChange(event.target.value)}
+          onKeyDown={(event) => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); onAddNote(); } }}
+          placeholder="Escribe una nota y pulsa Ctrl+Enter…"
+          className="min-h-16 text-xs"
+          aria-label="Nueva nota"
+        />
+        <Button size="sm" className="mt-2 w-full" onClick={onAddNote} disabled={!draft.trim()}>Añadir nota</Button>
+      </div>
+      <div className="space-y-2">
+        {docNotes.length ? docNotes.map((note) => (
+          <div key={note.id} className="group rounded-lg border bg-card p-2.5">
+            <p className="whitespace-pre-wrap text-xs leading-5">{note.text}</p>
+            <div className="mt-1.5 flex items-center justify-between">
+              <span className="text-[10px] text-muted-foreground">{new Date(note.createdAt).toLocaleDateString()}</span>
+              <button type="button" onClick={() => onRemoveNote(note.id)} className="rounded p-1 text-muted-foreground opacity-0 transition hover:bg-accent hover:text-destructive group-hover:opacity-100" aria-label="Eliminar nota"><Trash2 className="h-3 w-3" /></button>
+            </div>
+          </div>
+        )) : <p className="px-1 py-3 text-center text-xs leading-5 text-muted-foreground">Aún no hay notas para este documento.</p>}
+      </div>
+      <div className="mb-2 mt-5 flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <BookmarkIcon className="h-3.5 w-3.5" />Marcadores
+      </div>
+      <div className="space-y-1">
+        {docBookmarks.length ? docBookmarks.map((bookmark) => (
+          <div key={bookmark.id} className="group flex items-center gap-1">
+            <button type="button" onClick={() => onGoToBookmark(bookmark.position)} className="min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-left text-xs transition hover:bg-accent" title="Ir al marcador">
+              {bookmark.label}
+            </button>
+            <button type="button" onClick={() => onRemoveBookmark(bookmark.id)} className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition hover:bg-accent hover:text-destructive group-hover:opacity-100" aria-label={`Eliminar ${bookmark.label}`}><Trash2 className="h-3 w-3" /></button>
+          </div>
+        )) : <p className="px-1 py-2 text-xs leading-5 text-muted-foreground">Usa el botón de marcador para guardar tu posición.</p>}
+      </div>
+    </aside>
   );
 }

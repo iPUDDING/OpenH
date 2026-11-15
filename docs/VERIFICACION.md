@@ -1,4 +1,4 @@
-# Informe de verificación — OpenHub 1.2.0
+# Informe de verificación — OpenHub 1.4.0
 
 **Fecha:** 11 de noviembre de 2026.
 
@@ -8,7 +8,7 @@
 |---|---|
 | `npm run typecheck` | Correcto, sin errores TypeScript. |
 | `npm test` | 14 archivos; **70/70 pruebas unitarias** superadas (incluye parsers OOXML: XML, DOCX, PPTX y XLSX). |
-| `npm run build` | Build Vite de producción correcto; **2429 módulos** transformados (chunk `office` diferido con JSZip). |
+| `npm run build` | Build Vite de producción correcto; **2430 módulos** transformados (chunk `office` diferido con JSZip). |
 | `npm audit --omit=dev --audit-level=low` | **0 vulnerabilidades** en dependencias de producción. |
 | `node verify-improvements.mjs` | **7 comprobaciones** funcionales superadas; **`errors: []`**. |
 | `node verify-usability.mjs` | **14 comprobaciones** de usabilidad superadas; **`errors: []`**. |
@@ -17,7 +17,7 @@
 | `node verify-navigation.mjs` | **10 comprobaciones** de identidad, Recientes y pantalla completa (`F11` global) superadas; **`errors: []`**. |
 | `node verify-viewer-features.mjs` | **20 comprobaciones** de zoom con scroll, renombrado, subrayado de títulos/subtítulos, atajo `Espacio`, tiempo restante, fórmulas LaTeX, guiones, menú contextual de lectura y visor DOCX/PPTX/XLSX superadas; **`errors: []`**. |
 
-Total de navegador: **65/65 comprobaciones** sobre el frontend de producción servido en el puerto 1420 mediante Chromium/Playwright. No se modifica la interfaz distribuida para aparentar resultados.
+Total de navegador: **76/76 comprobaciones** sobre el frontend de producción servido en el puerto 1420 mediante Chromium/Playwright. No se modifica la interfaz distribuida para aparentar resultados.
 
 ## E2E general
 
@@ -51,6 +51,26 @@ notas de diapositiva y hojas múltiples) y verifica:
 2. Al elegir la acción, la lectura TTS comienza en ese párrafo (no desde el título).
 3. Clic derecho en zona vacía, lejos del texto: no aparece el menú propio
    (se conserva el menú nativo del navegador).
+
+## E2E de temas Apple
+
+`verify-usability.mjs` verifica la sección Temas de Ajustes:
+
+1. Al elegir “Apple Claro”: `data-theme="apple-light"` en `<html>` y barra
+   de lectura flotante (`position: absolute`).
+2. “Apple Oscuro”: `data-theme="apple-dark"` con clase `dark`.
+3. “Apple con Índice”: el panel de índice del documento visible por defecto.
+4. “Apple Foco”: la barra lateral queda totalmente oculta (`w-0`).
+5. Volver a “Claro” restaura el aspecto clásico (sin `data-theme`).
+
+## E2E de experiencia de lectura y productividad
+
+`verify-viewer-features.mjs` verifica las funciones de lectura:
+
+1. Barra de progreso de lectura visible (`role="progressbar"`).
+2. Estadísticas en el encabezado: palabras, caracteres y minutos estimados.
+3. Papel sepia aplicado al área del documento y persistente tras recargar.
+4. Marcador y nota guardados y visibles en el panel lateral.
 
 ## E2E de usabilidad y regresiones
 

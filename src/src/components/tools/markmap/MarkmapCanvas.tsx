@@ -1,55 +1,73 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
-import { Loader2 } from 'lucide-react';
-import { useMarkmap } from '@/hooks/useMarkmap';
-import { normalizeSearchText } from '@/lib/text';
+import { useEffect, useRef } from 'react';
+import { basicSetup } from 'codemirror';
+import { EditorView, placeholder } from '@codemirror/view';
+import { Compartment, EditorState } from '@codemirror/state';
+import { markdown } from '@codemirror/lang-markdown';
+import { oneDark } from '@codemirror/theme-one-dark';
+import { useAppStore } from '@/store/useAppStore';
+import { isDarkTheme, type Theme } from '@/types';
 
-export interface MarkmapCanvasHandle {
-  fit: () => void;
-  zoomBy: (factor: number) => void;
-  toggleAll: (collapse: boolean) => void;
+interface MarkmapEditorProps {
+  value: string;
+  onChange: (value: string) => void;
 }
 
-interface MarkmapCanvasProps {
-  content: string;
-  controlsRef?: React.MutableRefObject<MarkmapCanvasHandle | null>;
-  searchQuery?: string;
-  activeSearchIndex?: number;
-  onSearchMatches?: (count: number) => void;
+function systemIsDark(theme: Theme): boolean {
+  return isDarkTheme(theme) || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 }
 
-export const MarkmapCanvas = forwardRef<SVGSVGElement, MarkmapCanvasProps>(function MarkmapCanvas({ content, controlsRef, searchQuery = '', activeSearchIndex = 0, onSearchMatches }, svgRef) {
-  const localRef = useRef<SVGSVGElement>(null);
-  useImperativeHandle(svgRef, () => localRef.current!, []);
-  const controls = useMarkmap(localRef, content);
-  if (controlsRef) controlsRef.current = { fit: controls.fit, zoomBy: controls.zoomBy, toggleAll: controls.toggleAll };
+export function MarkmapEditor({ value, onChange }: MarkmapEditorProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const viewRef = useRef<EditorView | null>(null);
+  const compartmentRef = useRef(new Compartment());
+  const onChangeRef = useRef(onChange);
+  const theme = useAppStore((state) => state.theme);
+  onChangeRef.current = onChange;
 
   useEffect(() => {
-    if (!controls.ready || !localRef.current) return;
-    const timeout = window.setTimeout(() => {
-      const nodes = Array.from(localRef.current!.querySelectorAll<SVGGElement>('.markmap-node'));
-      nodes.forEach((node) => node.removeAttribute('data-markmap-search'));
-      if (!searchQuery.trim()) {
-        onSearchMatches?.(0);
-        return;
-      }
-      const needle = normalizeSearchText(searchQuery);
-      const matches = nodes.filter((node) => normalizeSearchText(node.textContent ?? '').includes(needle));
-      matches.forEach((node) => node.dataset.markmapSearch = 'match');
-      onSearchMatches?.(matches.length);
-      const active = matches[activeSearchIndex];
-      if (active) {
-        active.dataset.markmapSearch = 'current';
-        controls.focusElement(active);
-      }
-    }, 80);
-    return () => window.clearTimeout(timeout);
-  }, [activeSearchIndex, controls.ready, controls.revision, onSearchMatches, searchQuery]);
+    if (!containerRef.current) return;
+    const view = new EditorView({
+      state: EditorState.create({
+        doc: value,
+        extensions: [
+          basicSetup,
+          markdown(),
+          placeholder('# Título\n\n## Rama principal\n\n- Idea'),
+          EditorView.lineWrapping,
+          compartmentRef.current.of(systemIsDark(theme) ? oneDark : []),
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged) onChangeRef.current(update.state.doc.toString());
+          }),
+          EditorView.theme({
+            '&': { height: '100%' },
+            '.cm-content': { padding: '16px 0', caretColor: 'hsl(var(--primary))' },
+            '.cm-scroller': { overflow: 'auto' },
+          }),
+        ],
+      }),
+      parent: containerRef.current,
+    });
+    viewRef.current = view;
+    return () => {
+      view.destroy();
+      viewRef.current = null;
+    };
+    // El editor solo se crea una vez; valor y tema se sincronizan por separado.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  return (
-    <div className="relative h-full min-h-0 bg-card" onWheel={(event) => { if (event.ctrlKey) { event.preventDefault(); controls.zoomBy(event.deltaY < 0 ? 1.12 : 0.89); } }}>
-      {!controls.ready && !controls.error && <div className="absolute inset-0 z-10 grid place-items-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}
-      {controls.error && <p role="alert" className="absolute left-4 right-4 top-4 z-10 rounded-md bg-destructive/10 p-3 text-sm text-destructive">{controls.error}</p>}
-      <svg ref={localRef} className="markmap-svg" role="img" aria-label="Mapa mental interactivo" />
-    </div>
-  );
-});
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    const current = view.state.doc.toString();
+    if (current !== value) view.dispatch({ changes: { from: 0, to: current.length, insert: value } });
+  }, [value]);
+
+  useEffect(() => {
+    viewRef.current?.dispatch({
+      effects: compartmentRef.current.reconfigure(systemIsDark(theme) ? oneDark : []),
+    });
+  }, [theme]);
+
+  return <div ref={containerRef} className="h-full min-h-0 overflow-hidden" aria-label="Editor CodeMirror del mapa mental" />;
+}

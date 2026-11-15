@@ -1,4 +1,4 @@
-# Informe de verificación — OpenHub 1.1.0
+# Informe de verificación — OpenHub 1.2.0
 
 **Fecha:** 11 de noviembre de 2026.
 
@@ -8,16 +8,16 @@
 |---|---|
 | `npm run typecheck` | Correcto, sin errores TypeScript. |
 | `npm test` | 14 archivos; **70/70 pruebas unitarias** superadas (incluye parsers OOXML: XML, DOCX, PPTX y XLSX). |
-| `npm run build` | Build Vite de producción correcto; **2428 módulos** transformados (chunk `office` diferido con JSZip). |
+| `npm run build` | Build Vite de producción correcto; **2429 módulos** transformados (chunk `office` diferido con JSZip). |
 | `npm audit --omit=dev --audit-level=low` | **0 vulnerabilidades** en dependencias de producción. |
 | `node verify-improvements.mjs` | **7 comprobaciones** funcionales superadas; **`errors: []`**. |
 | `node verify-usability.mjs` | **14 comprobaciones** de usabilidad superadas; **`errors: []`**. |
 | `node verify-updater.mjs` | **8 comprobaciones** del actualizador superadas; **`errors: []`**. |
 | `node verify-pomodoro.mjs` | **6 comprobaciones** de apilamiento, clics y alarmas superadas; **`errors: []`**. |
 | `node verify-navigation.mjs` | **10 comprobaciones** de identidad, Recientes y pantalla completa (`F11` global) superadas; **`errors: []`**. |
-| `node verify-viewer-features.mjs` | **19 comprobaciones** de zoom con scroll, renombrado, subrayado de títulos/subtítulos, atajo `Espacio`, tiempo restante, fórmulas LaTeX, guiones y visor DOCX/PPTX/XLSX superadas; **`errors: []`**. |
+| `node verify-viewer-features.mjs` | **20 comprobaciones** de zoom con scroll, renombrado, subrayado de títulos/subtítulos, atajo `Espacio`, tiempo restante, fórmulas LaTeX, guiones, menú contextual de lectura y visor DOCX/PPTX/XLSX superadas; **`errors: []`**. |
 
-Total de navegador: **64/64 comprobaciones** sobre el frontend de producción servido en el puerto 1420 mediante Chromium/Playwright. No se modifica la interfaz distribuida para aparentar resultados.
+Total de navegador: **65/65 comprobaciones** sobre el frontend de producción servido en el puerto 1420 mediante Chromium/Playwright. No se modifica la interfaz distribuida para aparentar resultados.
 
 ## E2E general
 
@@ -41,6 +41,16 @@ notas de diapositiva y hojas múltiples) y verifica:
    notas del orador en cita, insignia `PPTX` e índice navegable entre diapositivas.
 3. XLSX: dos hojas en orden (`Técnicas`, `Resumen`) con tablas, valores numéricos,
    booleano, celda combinada, hipervínculo e insignia `XLSX`.
+
+## E2E de menú contextual de lectura
+
+`verify-viewer-features.mjs` verifica el clic derecho sobre el documento:
+
+1. Clic derecho sobre el segundo párrafo: aparece el menú con
+   “Empezar lectura desde aquí” junto al cursor.
+2. Al elegir la acción, la lectura TTS comienza en ese párrafo (no desde el título).
+3. Clic derecho en zona vacía, lejos del texto: no aparece el menú propio
+   (se conserva el menú nativo del navegador).
 
 ## E2E de usabilidad y regresiones
 

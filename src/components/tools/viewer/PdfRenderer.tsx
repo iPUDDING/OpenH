@@ -19,13 +19,15 @@ interface PdfRendererProps {
   position: SpeechPosition | null;
   autoScroll: boolean;
   onSegmentsChange: (segments: SpeechSegment[]) => void;
+  /** Informa la página visible para el menú contextual "leer desde aquí". */
+  onPageChange?: (page: number) => void;
 }
 
 function pageText(content: TextContent): string {
   return content.items.map((item) => 'str' in item ? `${item.str}${item.hasEOL ? '\n' : ' '}` : '').join('');
 }
 
-export function PdfRenderer({ data, position, autoScroll, onSegmentsChange }: PdfRendererProps) {
+export function PdfRenderer({ data, position, autoScroll, onSegmentsChange, onPageChange }: PdfRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
@@ -45,6 +47,10 @@ export function PdfRenderer({ data, position, autoScroll, onSegmentsChange }: Pd
   const latestZoomRef = useRef(1.25);
 
   latestZoomRef.current = fitMode === 'custom' ? scale : renderScale;
+
+  useEffect(() => {
+    onPageChange?.(pageNumber);
+  }, [pageNumber, onPageChange]);
 
   useEffect(() => {
     let cancelled = false;

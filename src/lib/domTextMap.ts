@@ -73,6 +73,41 @@ function collectSegmentParts(element: HTMLElement): { nodes: TextNodeOffset[]; m
   return { nodes, mathRanges, text };
 }
 
+/**
+ * Devuelve el índice del segmento de lectura bajo un punto de la pantalla
+ * (coordenadas de cliente), o null si el punto no está sobre texto mapeado.
+ * Se usa para "Empezar lectura desde aquí" del menú contextual: el navegador
+ * resuelve el nodo de texto más cercano al cursor y se busca el segmento que
+ * lo contiene (con respaldo por contención para imágenes, enlaces y saltos).
+ */
+export function segmentIndexAtPoint(map: DocumentTextMap | null, clientX: number, clientY: number): number | null {
+  if (!map) return null;
+  const doc = map.root.ownerDocument;
+  let node: Node | null = null;
+  if (typeof doc.caretRangeFromPoint === 'function') {
+    const range = doc.caretRangeFromPoint(clientX, clientY);
+    if (range) node = range.startContainer;
+  } else if (typeof doc.caretPositionFromPoint === 'function') {
+    const position = doc.caretPositionFromPoint(clientX, clientY);
+    if (position) node = position.offsetNode;
+  }
+  if (!node) return null;
+  for (let index = 0; index < map.segments.length; index += 1) {
+    const segment = map.segments[index];
+    const hit = segment.nodes.some((item) => item.node === node)
+      || (node.nodeType === Node.ELEMENT_NODE && segment.element.contains(node));
+    if (!hit) continue;
+    // El navegador devuelve el nodo más cercano aunque el clic caiga en zona
+    // vacía: solo se acepta si el punto está dentro del bloque del párrafo.
+    const rect = segment.element.getBoundingClientRect();
+    const tolerance = 6;
+    const inside = clientX >= rect.left - tolerance && clientX <= rect.right + tolerance
+      && clientY >= rect.top - tolerance && clientY <= rect.bottom + tolerance;
+    return inside ? index : null;
+  }
+  return null;
+}
+
 export function buildDomTextMap(root: HTMLElement): DocumentTextMap {
   const candidates = Array.from(root.querySelectorAll<HTMLElement>(BLOCK_SELECTOR))
     .filter((element) => !element.querySelector(BLOCK_SELECTOR));

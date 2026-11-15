@@ -17,8 +17,8 @@ const page = await context.newPage();
 watch(page);
 await page.goto('http://127.0.0.1:1420', { waitUntil: 'networkidle' });
 await page.getByText('By SrMaxi', { exact: true }).waitFor();
-await page.getByText('v1.1.0', { exact: true }).waitFor();
-checks.push('La cabecera muestra By SrMaxi y la versión base v1.1.0');
+await page.getByText('v1.2.0', { exact: true }).waitFor();
+checks.push('La cabecera muestra By SrMaxi y la versión base v1.2.0');
 await page.getByRole('button', { name: 'Crear texto nuevo', exact: true }).click();
 await page.getByLabel('Editor Markdown', { exact: true }).waitFor();
 assert.equal(await page.getByLabel('Editor Markdown', { exact: true }).inputValue(), '');
@@ -74,7 +74,7 @@ await nativePage.addInitScript(() => {
     transformCallback: () => ++callbackId,
     unregisterCallback: () => undefined,
     invoke: async (command, args = {}) => {
-      if (command === 'plugin:app|version') return '1.1.0';
+      if (command === 'plugin:app|version') return '1.2.0';
       if (command === 'plugin:event|listen') return 1;
       if (command === 'plugin:updater|check') return null;
       if (command === 'plugin:window|is_fullscreen') return window.__nativeFullscreen;

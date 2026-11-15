@@ -1,4 +1,4 @@
-OPENHUB 1.1.0 — CAPTURAS REALES
+OPENHUB 1.2.0 — CAPTURAS REALES
 ================================
 
 Estas imágenes fueron capturadas directamente del build de producción de
@@ -35,10 +35,11 @@ MEJORAS VERIFICADAS (carpeta mejoras/)
 23-docx.png                   DOCX real con encabezados, lista, tabla e imagen.
 24-pptx.png                   PPTX real con diapositivas, notas e índice.
 25-xlsx.png                   XLSX real con hojas, tablas e hipervínculo.
+26-menu-contextual.png        Clic derecho con "Empezar lectura desde aquí".
 
 Las capturas 07–11 se generan con verify-improvements.mjs, las capturas 12–13
 con verify-usability.mjs, la 14 con verify-updater.mjs, la 15 con
-verify-pomodoro.mjs, las 16–17 con verify-navigation.mjs y las 18–25 con
+verify-pomodoro.mjs, las 16–17 con verify-navigation.mjs y las 18–26 con
 verify-viewer-features.mjs. Los seis E2E terminaron con errors: [].
 
 El ejecutable Windows utiliza este mismo frontend dentro de Microsoft

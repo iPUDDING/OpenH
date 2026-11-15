@@ -181,7 +181,7 @@ await tauriPage.addInitScript(({ filePath, bytes }) => {
     unregisterCallback: () => undefined,
     invoke: async (command) => {
       window.__tauriCommands.push(command);
-      if (command === 'plugin:app|version') return '1.1.0';
+      if (command === 'plugin:app|version') return '1.2.0';
       if (command === 'plugin:event|listen') return 1;
       if (command === 'plugin:updater|check') return null;
       if (command === 'plugin:dialog|open') return filePath;
@@ -472,6 +472,58 @@ assert.equal(dashHighlight.connected, true);
 await dashPage.screenshot({ path: `${output}22-guiones-tts.png`, animations: 'disabled' });
 checks.push('Los guiones (`-`, `–`, `—`) se leen como pausa, rango o compuesto sin saltarse y el subrayado permanece conectado');
 await dashContext.close();
+
+// 8. Menú contextual: clic derecho sobre un párrafo ofrece leer desde allí.
+const menuContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'es-ES' });
+const menuPage = await menuContext.newPage();
+watch(menuPage);
+await menuPage.addInitScript(() => {
+  window.__spoken = [];
+  window.__utterances = [];
+  window.__ttsPausedCalls = 0;
+  window.__ttsResumedCalls = 0;
+  window.__ttsCanceledCalls = 0;
+  class FakeUtterance {
+    constructor(text) { this.text = text; this.rate = 1; this.pitch = 1; this.volume = 1; this.lang = 'es-ES'; }
+  }
+  Object.defineProperty(window, 'SpeechSynthesisUtterance', { configurable: true, value: FakeUtterance });
+  Object.defineProperty(window, 'speechSynthesis', {
+    configurable: true,
+    value: {
+      getVoices: () => [{ name: 'Voz QA local', lang: 'es-ES', voiceURI: 'qa-local' }],
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      speak: (utterance) => { window.__spoken.push(utterance.text); window.__utterances.push(utterance); },
+      pause: () => { window.__ttsPausedCalls += 1; },
+      resume: () => { window.__ttsResumedCalls += 1; },
+      cancel: () => { window.__ttsCanceledCalls += 1; },
+    },
+  });
+});
+await menuPage.goto('http://127.0.0.1:1420', { waitUntil: 'networkidle' });
+await menuPage.getByLabel('Markdown inicial').fill(
+  '# Menú contextual\n\nPrimer párrafo de apertura.\n\nSegundo párrafo objetivo de la lectura.\n\nTercer párrafo de cierre.'
+);
+await menuPage.getByRole('button', { name: 'Abrir borrador' }).click();
+await menuPage.locator('.markdown-body h1').waitFor();
+// Clic derecho sobre el segundo párrafo: aparece el menú con la acción.
+const secondParagraph = menuPage.locator('.markdown-body p').nth(1);
+const box = await secondParagraph.boundingBox();
+await menuPage.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'right' });
+await menuPage.getByRole('menuitem', { name: 'Empezar lectura desde aquí' }).waitFor();
+await menuPage.screenshot({ path: `${output}26-menu-contextual.png`, animations: 'disabled' });
+await menuPage.getByRole('menuitem', { name: 'Empezar lectura desde aquí' }).click();
+await menuPage.waitForFunction(() => window.__spoken.length === 1);
+assert.equal(await menuPage.evaluate(() => window.__spoken[0]), 'Segundo párrafo objetivo de la lectura.');
+assert.equal(await menuPage.getByRole('menuitem', { name: 'Empezar lectura desde aquí' }).count(), 0);
+// Clic derecho fuera del texto (zona vacía, lejos del último párrafo): no aparece el menú propio.
+const lastParagraph = menuPage.locator('.markdown-body p').last();
+const lastBox = await lastParagraph.boundingBox();
+await menuPage.mouse.click(lastBox.x + lastBox.width / 2, lastBox.y + lastBox.height + 80, { button: 'right' });
+await menuPage.waitForTimeout(300);
+assert.equal(await menuPage.getByRole('menuitem', { name: 'Empezar lectura desde aquí' }).count(), 0);
+checks.push('Clic derecho sobre un párrafo ofrece "Empezar lectura desde aquí" y la lectura comienza en ese párrafo; fuera del texto no aparece el menú');
+await menuContext.close();
 
 // DOCX, PPTX y XLSX reales: apertura por input, render, TTS, zoom e índice.
 const officeContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });

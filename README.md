@@ -4,7 +4,7 @@ Aplicación de escritorio **Windows 10/11**, que integra un visor Markdown/PDF, 
 
 ## Funcionalidades
 
-- **Documentos:** Markdown, TXT, PDF, DOCX (Word), PPTX (PowerPoint) y XLSX (Excel); diálogo nativo, drag & drop, historial, editor dividido, GFM, código y KaTeX; los documentos Office se convierten localmente a HTML semántico (encabezados, listas, tablas, imágenes, enlaces, notas y hojas) con el mismo subrayado TTS, zoom e índice; zoom con `Ctrl + rueda` (y botones `− / % / +` o `Ctrl + 0`) en Markdown/TXT/editor, PDF y Office; cambio de nombre visible dentro de la app haciendo clic en la barra superior o desde Recientes sin alterar los archivos del disco.
+- **Documentos:** Markdown, TXT, PDF, DOCX (Word), PPTX (PowerPoint) y XLSX (Excel); diálogo nativo, drag & drop, historial, editor dividido, GFM, código y KaTeX; los documentos Office se convierten localmente a HTML semántico (encabezados, listas, tablas, imágenes, enlaces, notas y hojas) con el mismo subrayado TTS, zoom e índice; clic derecho sobre cualquier párrafo/sección para empezar la lectura TTS desde allí; zoom con `Ctrl + rueda` (y botones `− / % / +` o `Ctrl + 0`) en Markdown/TXT/editor, PDF y Office; cambio de nombre visible dentro de la app haciendo clic en la barra superior o desde Recientes sin alterar los archivos del disco.
 - **PDF local:** PDF.js y worker empaquetados; zoom con `Ctrl + rueda` o botones, ajuste, páginas, búsqueda global y capa de texto seleccionable.
 - **Voz:** Web Speech API / voces SAPI disponibles en WebView2; velocidad, tono, volumen, atajo `Espacio` para pausar/reanudar la lectura activa sin interferir al escribir, lectura de selección, párrafos, progreso, tiempo restante en vivo `mm:ss` calibrado con la velocidad real de la voz (con duración total y palabras restantes), fórmulas LaTeX leídas en español natural (sin código fuente), guiones leídos como pausa/rango/compuesto sin saltarse, resaltado (incluidos títulos/subtítulos Markdown y enlaces) y auto-scroll.
 - **Mapas:** CodeMirror 6 + Markmap, zoom, pan, colapso, modo foco, plantillas y exportación MD/SVG/HTML/PNG/PDF mediante impresión.
@@ -66,8 +66,8 @@ La verificación E2E opcional y reproducible de las nuevas funciones está docum
 Instaladores generados:
 
 ```text
-src-tauri/target/release/bundle/nsis/OpenHub_1.1.0_x64-setup.exe
-src-tauri/target/release/bundle/msi/OpenHub_1.1.0_x64_en-US.msi
+src-tauri/target/release/bundle/nsis/OpenHub_1.2.0_x64-setup.exe
+src-tauri/target/release/bundle/msi/OpenHub_1.2.0_x64_en-US.msi
 ```
 
 > Los nombres pueden variar según la arquitectura y el idioma del bundle.
@@ -79,7 +79,7 @@ src-tauri/target/release/bundle/msi/OpenHub_1.1.0_x64_en-US.msi
    ```powershell
    git init
    git add .
-   git commit -m "OpenHub 1.1.0"
+   git commit -m "OpenHub 1.2.0"
    git branch -M main
    git remote add origin https://github.com/USUARIO/REPOSITORIO.git
    git push -u origin main

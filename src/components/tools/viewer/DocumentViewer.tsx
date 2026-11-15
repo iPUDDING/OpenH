@@ -3,6 +3,7 @@ import { Check, Columns2, Download, FileText, FolderOpen, ListTree, Loader2, Min
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReaderToolbar } from './ReaderToolbar';
+import { ReaderContextMenu } from './ReaderContextMenu';
 import { DocumentOutline } from './DocumentOutline';
 import { Button } from '@/components/ui/Button';
 import { Input, Textarea } from '@/components/ui/Input';
@@ -18,7 +19,7 @@ import { applyMathSpeech } from '@/lib/mathSpeech';
 import { applyDashSpeech } from '@/lib/dashSpeech';
 import { selectedDocumentText } from '@/lib/selection';
 import { basename } from '@/lib/utils';
-import type { DocumentTextMap } from '@/lib/domTextMap';
+import { segmentIndexAtPoint, type DocumentTextMap } from '@/lib/domTextMap';
 import type { OpenedDocument, RecentDocument, SpeechSegment } from '@/types';
 
 const PdfRenderer = lazy(() => import('./PdfRenderer').then((module) => ({ default: module.PdfRenderer })));
@@ -63,9 +64,14 @@ export default function DocumentViewer() {
   useEffect(() => {
     setActiveDocumentId(current?.id);
   }, [current?.id, setActiveDocumentId]);
+  useEffect(() => {
+    setContextMenu(null);
+  }, [current?.id]);
   const [draft, setDraft] = useState('');
   const [textMap, setTextMap] = useState<DocumentTextMap | null>(null);
   const [pdfSegments, setPdfSegments] = useState<SpeechSegment[]>([]);
+  const [pdfPage, setPdfPage] = useState(1);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; segmentIndex: number } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [selectionText, setSelectionText] = useState('');
@@ -354,6 +360,26 @@ export default function DocumentViewer() {
   const handleTextMap = useCallback((map: DocumentTextMap | null) => setTextMap(map), []);
   const handlePdfSegments = useCallback((next: SpeechSegment[]) => setPdfSegments(next), []);
 
+  // Clic derecho sobre el documento: si el cursor está sobre un párrafo
+  // mapeado, se ofrece "Empezar lectura desde aquí"; si no, menú nativo.
+  const onReaderContextMenu = useCallback((event: React.MouseEvent) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+    const index = segmentIndexAtPoint(textMap, event.clientX, event.clientY);
+    if (index === null) return;
+    event.preventDefault();
+    setContextMenu({ x: event.clientX, y: event.clientY, segmentIndex: index });
+  }, [textMap]);
+
+  const onPdfContextMenu = useCallback((event: React.MouseEvent) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+    const index = pdfSegments.findIndex((segment) => segment.id === `pdf-page-${pdfPage}`);
+    if (index === -1) return;
+    event.preventDefault();
+    setContextMenu({ x: event.clientX, y: event.clientY, segmentIndex: index });
+  }, [pdfPage, pdfSegments]);
+
   return (
     <section
       ref={sectionRef}
@@ -497,7 +523,7 @@ export default function DocumentViewer() {
         <>
           <ReaderToolbar controller={tts} onReadSelection={readSelection} selectionLength={selectionText.length} showPomodoro={isMarkdown} />
           {isMarkdown ? (
-            <div ref={markdownAreaRef} className={`grid min-h-0 flex-1 ${mode === 'split' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+            <div ref={markdownAreaRef} onContextMenu={onReaderContextMenu} className={`grid min-h-0 flex-1 ${mode === 'split' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
               {mode === 'split' && (
                 <div className="hidden min-h-0 border-r lg:flex lg:flex-col">
                   <div className="border-b bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground">EDITOR MARKDOWN</div>
@@ -519,7 +545,7 @@ export default function DocumentViewer() {
               </div>
             </div>
           ) : (current.kind === 'docx' || current.kind === 'pptx' || current.kind === 'xlsx') && current.data ? (
-            <div ref={officeAreaRef} className="flex min-h-0 flex-1 bg-card">
+            <div ref={officeAreaRef} onContextMenu={onReaderContextMenu} className="flex min-h-0 flex-1 bg-card">
               {outlineOpen && headings.length > 0 && <DocumentOutline headings={headings} />}
               <div ref={previewScrollRef} className="min-h-0 flex-1 overflow-auto">
                 <Suspense fallback={<div className="grid flex-1 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /><span className="sr-only">Convirtiendo documento</span></div>}>
@@ -528,13 +554,23 @@ export default function DocumentViewer() {
               </div>
             </div>
           ) : current.data ? (
-            <Suspense fallback={<div className="grid flex-1 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /><span className="sr-only">Cargando PDF.js</span></div>}>
-              <PdfRenderer data={current.data} position={tts.position} autoScroll={autoScroll} onSegmentsChange={handlePdfSegments} />
-            </Suspense>
+            <div onContextMenu={onPdfContextMenu} className="flex min-h-0 flex-1 flex-col">
+              <Suspense fallback={<div className="grid flex-1 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /><span className="sr-only">Cargando PDF.js</span></div>}>
+                <PdfRenderer data={current.data} position={tts.position} autoScroll={autoScroll} onSegmentsChange={handlePdfSegments} onPageChange={setPdfPage} />
+              </Suspense>
+            </div>
           ) : (
             <div className="grid flex-1 place-items-center p-6 text-center"><div><p className="mb-3 text-muted-foreground">Vuelve a abrir “{basename(current.name)}” para cargar su contenido.</p><Button onClick={() => void openDialog()}>Seleccionar {current.kind.toUpperCase()}</Button></div></div>
           )}
         </>
+      )}
+      {contextMenu && (
+        <ReaderContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onReadFromHere={() => tts.play(contextMenu.segmentIndex)}
+          onClose={() => setContextMenu(null)}
+        />
       )}
     </section>
   );

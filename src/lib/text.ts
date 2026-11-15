@@ -22,8 +22,28 @@ export function countWords(text: string): number {
   return extractWordRanges(text).length;
 }
 
+/** Velocidad media realista de lectura en voz alta en español (palabras/min a velocidad 1×). */
+export const BASE_WORDS_PER_MINUTE = 165;
+
+/** Pausas naturales que la voz hace en puntuación y saltos de párrafo (segundos). */
+export function pauseAllowanceSeconds(text: string): number {
+  if (!text) return 0;
+  const sentenceEnds = text.match(/[.!?…]+/g)?.length ?? 0;
+  const clausePauses = text.match(/[,;:]/g)?.length ?? 0;
+  const paragraphBreaks = text.match(/\n\s*\n/g)?.length ?? 0;
+  return sentenceEnds * 0.35 + clausePauses * 0.12 + paragraphBreaks * 0.5;
+}
+
+/**
+ * Estima la duración de lectura de un texto: palabras a la velocidad nominal
+ * más las pausas por puntuación. La velocidad se limita al rango de la interfaz (0,5×–2,5×).
+ */
 export function estimateSeconds(text: string, rate = 1): number {
-  return (countWords(text) / Math.max(0.5, 180 * rate)) * 60;
+  const words = countWords(text);
+  if (!words) return 0;
+  const safeRate = Math.min(2.5, Math.max(0.5, Number.isFinite(rate) ? rate : 1));
+  const speechSeconds = (words / (BASE_WORDS_PER_MINUTE * safeRate)) * 60;
+  return speechSeconds + pauseAllowanceSeconds(text);
 }
 
 export function normalizeSearchText(value: string): string {

@@ -1,4 +1,4 @@
-import { Pause, Play, RotateCcw, ScanText, SkipBack, SkipForward, Square, Volume2 } from 'lucide-react';
+import { Clock, Pause, Play, RotateCcw, ScanText, SkipBack, SkipForward, Square, Volume2 } from 'lucide-react';
 import type { TtsController } from '@/hooks/useTts';
 import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/components/ui/Button';
@@ -57,7 +57,21 @@ export function ReaderToolbar({ controller, onReadSelection, showPomodoro = fals
           options={[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5].map((rate) => ({ value: String(rate), label: `${rate}×` }))}
           className="w-[76px]"
         />
-        {active && <span className="ml-1 hidden text-xs text-muted-foreground lg:inline">≈ {formatDuration(controller.remainingSeconds)} restantes</span>}
+        <span
+          className="ml-1 flex items-center gap-1 text-xs text-muted-foreground tabular-nums"
+          title={`Tiempo estimado según la velocidad real de la voz (${Math.round(controller.effectiveWpm)} palabras/min). Se ajusta mientras lees.`}
+        >
+          <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          {controller.status === 'completed' ? (
+            <>Lectura completada · {formatDuration(controller.totalSeconds)}</>
+          ) : controller.status === 'paused' ? (
+            <>En pausa · quedan {formatDuration(controller.remainingSeconds)}</>
+          ) : active ? (
+            <>Quedan {formatDuration(controller.remainingSeconds)}<span className="hidden sm:inline"> · {controller.remainingWords} palabras</span></>
+          ) : (
+            <>≈ {formatDuration(controller.totalSeconds)} en total</>
+          )}
+        </span>
         <div className="ml-auto">{showPomodoro && <PomodoroTimer />}</div>
       </div>
       {(active || controller.status === 'completed') && <Progress value={controller.progress * 100} className="mt-2" label="Progreso de lectura" />}

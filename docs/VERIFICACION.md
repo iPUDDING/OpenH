@@ -1,4 +1,4 @@
-# Informe de verificación — OpenHub 1.0.7
+# Informe de verificación — OpenHub 1.0.9
 
 **Fecha:** 11 de noviembre de 2026.
 
@@ -7,17 +7,17 @@
 | Comprobación | Resultado |
 |---|---|
 | `npm run typecheck` | Correcto, sin errores TypeScript. |
-| `npm test` | 6 archivos; **27/27 pruebas unitarias** superadas. |
-| `npm run build` | Build Vite de producción correcto; **2414 módulos** transformados. |
+| `npm test` | 9 archivos; **48/48 pruebas unitarias** superadas. |
+| `npm run build` | Build Vite de producción correcto; **2416 módulos** transformados. |
 | `npm audit --omit=dev --audit-level=low` | **0 vulnerabilidades** en dependencias de producción. |
 | `node verify-improvements.mjs` | **7 comprobaciones** funcionales superadas; **`errors: []`**. |
 | `node verify-usability.mjs` | **14 comprobaciones** de usabilidad superadas; **`errors: []`**. |
 | `node verify-updater.mjs` | **8 comprobaciones** del actualizador superadas; **`errors: []`**. |
 | `node verify-pomodoro.mjs` | **6 comprobaciones** de apilamiento, clics y alarmas superadas; **`errors: []`**. |
 | `node verify-navigation.mjs` | **10 comprobaciones** de identidad, Recientes y pantalla completa (`F11` global) superadas; **`errors: []`**. |
-| `node verify-viewer-features.mjs` | **13 comprobaciones** de zoom con scroll, renombrado, subrayado de títulos/subtítulos y atajo `Espacio` superadas; **`errors: []`**. |
+| `node verify-viewer-features.mjs` | **15 comprobaciones** de zoom con scroll, renombrado, subrayado de títulos/subtítulos, atajo `Espacio`, tiempo restante y fórmulas LaTeX superadas; **`errors: []`**. |
 
-Total de navegador: **58/58 comprobaciones** sobre el frontend de producción servido en el puerto 1420 mediante Chromium/Playwright. No se modifica la interfaz distribuida para aparentar resultados.
+Total de navegador: **60/60 comprobaciones** sobre el frontend de producción servido en el puerto 1420 mediante Chromium/Playwright. No se modifica la interfaz distribuida para aparentar resultados.
 
 ## E2E general
 
@@ -69,11 +69,15 @@ En una segunda página aislada simula únicamente el IPC de Tauri para comprobar
 7. En archivos con ruta real en Windows, renombrar cambia únicamente el título visible dentro de OpenHub (conservando la ruta real sin emitir comandos de renombrado en disco) y persiste al reabrir desde Recientes y al recargar.
 8. El subrayado TTS mediante `CSS.highlights` (`openhub-word` y `openhub-phrase`) permanece conectado y resalta exactamente palabras dentro de títulos (`h1`), subtítulos (`h2`/`h3`) y nodos con enlaces o negrita.
 9. Pulsar `Espacio` pausa y reanuda la lectura tanto en el Visor como en Estudio TTS (incluso con el foco en controles TTS o tras pulsar un párrafo), mientras sigue escribiendo espacios normalmente dentro del editor Markdown.
+10. El tiempo restante muestra la duración total estimada en `mm:ss` en reposo y, durante la lectura, una cuenta regresiva en vivo que baja al avanzar de párrafo (con palabras restantes y total).
+11. Las fórmulas LaTeX (`$\ge 90\,\%$`, `$\frac{1}{2}$`, `$x^2$`) se leen en español natural («mayor o igual que 90 por ciento», «fracción 1 sobre 2», «al cuadrado») sin código fuente literal, y el subrayado TTS permanece conectado.
 
-Capturas finales: `docs/screenshots/mejoras/07-…` hasta `20-…`.
+Capturas finales: `docs/screenshots/mejoras/07-…` hasta `21-…`.
 
 ## Errores corregidos en esta ronda
 
+- Las fórmulas LaTeX se leían literalmente (`$\ge 90\,\%$` sonaba como código) y el visor saltaba de forma errática durante la lectura: el mapa de texto incluía el MathML invisible de KaTeX (con la anotación del código TeX duplicada) junto con los glifos visibles. Ahora (`src/lib/mathSpeech.ts` + `domTextMap.ts`) el MathML se excluye, cada fórmula se convierte a español hablado («mayor o igual que 90 por ciento») con mapa de offsets hacia los glifos visibles, los bloques de código no se tocan y los rangos colapsados ya no mueven el auto-scroll.
+- El apartado de tiempo restante se rehízo: antes solo se recalculaba al cambiar de párrafo (no bajaba dentro del párrafo), se mostraba redondeado a minutos enteros y usaba una velocidad fija de 180 palabras/min sin tener en cuenta la voz real. Ahora (`src/lib/readingTime.ts` + `useTts.ts`) calcula las palabras restantes desde la palabra actual, muestra una cuenta regresiva en vivo `mm:ss` (con duración total y palabras en reposo), suma pausas por puntuación y calibra la velocidad con la velocidad real observada de la voz; la pausa congela el contador y al reanudar no cuenta el tiempo detenido.
 - El resaltado TTS en títulos y subtítulos Markdown (`h1`–`h6`) y enlaces podía quedar desconectado al re-renderizar porque los wrappers inline en `ReactMarkdown` desmontaban esos nodos DOM y dejaban huérfanas las referencias guardadas en `DocumentTextMap`; ahora los encabezados nativos y `MarkdownLink` mantienen nodos estables y asignan IDs tras el commit en `useLayoutEffect`.
 - `F11` ahora se escucha en fase de captura desde la raíz de la aplicación (`App.tsx` + `useFullscreen.ts`), de modo que funciona siempre incluso cuando la barra superior está oculta o en cualquier vista, y es invocable también desde la paleta `Ctrl+K`.
 - Se añadió el atajo global contextual `Espacio` (`useSpeechSpaceShortcut`) en Visor y Estudio TTS para pausar/reanudar/detener la lectura activa sin interferir con editores, entradas, deslizadores, diálogos o Pomodoro.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { escapeHtml, extractWordRanges, findMatches, findSentenceRange, findWordAt, normalizeSearchText, splitParagraphs } from './text';
+import { BASE_WORDS_PER_MINUTE, escapeHtml, estimateSeconds, extractWordRanges, findMatches, findSentenceRange, findWordAt, normalizeSearchText, pauseAllowanceSeconds, splitParagraphs } from './text';
 import { formatClock, safeFileName } from './utils';
 
 describe('utilidades de texto', () => {
@@ -39,6 +39,21 @@ describe('utilidades de texto', () => {
 
   it('escapa HTML para exportaciones seguras', () => {
     expect(escapeHtml('<script>"x"</script>')).toBe('&lt;script&gt;&quot;x&quot;&lt;/script&gt;');
+  });
+
+  it('estima la duración con la velocidad base y las pausas de puntuación', () => {
+    const baseWords = Array.from({ length: BASE_WORDS_PER_MINUTE }, () => 'palabra').join(' ');
+    expect(estimateSeconds('', 1)).toBe(0);
+    expect(estimateSeconds(baseWords, 1)).toBeCloseTo(60, 5);
+    expect(estimateSeconds(baseWords, 2)).toBeCloseTo(30, 5);
+    expect(estimateSeconds('Hola mundo', 1)).toBeCloseTo((2 / BASE_WORDS_PER_MINUTE) * 60, 5);
+    expect(estimateSeconds('Hola mundo.', 1)).toBeCloseTo((2 / BASE_WORDS_PER_MINUTE) * 60 + 0.35, 5);
+  });
+
+  it('suma pausas por fin de frase, coma y salto de párrafo', () => {
+    expect(pauseAllowanceSeconds('')).toBe(0);
+    expect(pauseAllowanceSeconds('Uno. Dos, tres\n\nCuatro')).toBeCloseTo(0.35 + 0.12 + 0.5, 5);
+    expect(pauseAllowanceSeconds('Sin puntuación')).toBe(0);
   });
 
   it('formatea relojes y nombres de archivo', () => {

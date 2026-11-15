@@ -14,6 +14,7 @@ import { isTauri } from '@/services/fileSystemService';
 import { countWords } from '@/lib/text';
 import { extractHeadings } from '@/lib/headings';
 import { prepareSpeechSegments } from '@/lib/pronunciation';
+import { applyMathSpeech } from '@/lib/mathSpeech';
 import { selectedDocumentText } from '@/lib/selection';
 import { basename } from '@/lib/utils';
 import type { DocumentTextMap } from '@/lib/domTextMap';
@@ -83,7 +84,7 @@ export default function DocumentViewer() {
     : countWords(markdown), [current?.kind, markdown, pdfSegments]);
 
   const sourceSegments = useMemo<SpeechSegment[]>(() => current?.kind === 'pdf' ? pdfSegments : textMap?.segments ?? [], [current?.kind, pdfSegments, textMap]);
-  const segments = useMemo(() => prepareSpeechSegments(sourceSegments, pronunciationRules), [sourceSegments, pronunciationRules]);
+  const segments = useMemo(() => prepareSpeechSegments(applyMathSpeech(sourceSegments), pronunciationRules), [sourceSegments, pronunciationRules]);
   const tts = useTts(segments);
   useSpeechSpaceShortcut(sectionRef, tts);
 
@@ -210,7 +211,7 @@ export default function DocumentViewer() {
       return;
     }
     setNotice(`Leyendo solo la selección: ${countWords(text)} ${countWords(text) === 1 ? 'palabra' : 'palabras'}.`);
-    tts.play(0, prepareSpeechSegments([{ id: 'selection', text }], pronunciationRules));
+    tts.play(0, prepareSpeechSegments(applyMathSpeech([{ id: 'selection', text }]), pronunciationRules));
   }, [pronunciationRules, selectionText, tts.play]);
 
   const saveMarkdown = async () => {

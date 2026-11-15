@@ -37,6 +37,17 @@ export interface OpenedDocument {
   customName?: boolean;
 }
 
+/** Fórmula LaTeX detectada en el texto visible, con su lectura en español. */
+export interface MathSpeechRange {
+  /** Inicio/fin en el texto visible (glifos renderizados). */
+  start: number;
+  end: number;
+  /** Código TeX original (anotación de KaTeX o delimitadores `$…$`). */
+  tex: string;
+  /** Lectura natural en español de la fórmula. */
+  spoken: string;
+}
+
 export interface SpeechSegment {
   id: string;
   text: string;
@@ -45,6 +56,8 @@ export interface SpeechSegment {
   /** Fronteras de caracteres hablados → originales (longitud text.length + 1). */
   offsetMap?: number[];
   pronunciationRanges?: Array<{ spokenStart: number; spokenEnd: number; sourceStart: number; sourceEnd: number }>;
+  /** Fórmulas LaTeX del segmento (coordenadas del texto visible). */
+  mathRanges?: MathSpeechRange[];
 }
 
 export interface PronunciationRule {

@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useAppStore } from '@/store/useAppStore';
-import { countWords, estimateSeconds, extractWordRanges, findWordAt } from '@/lib/text';
+import { countWords, extractWordRanges, findWordAt } from '@/lib/text';
+import {
+  BASE_WORDS_PER_MINUTE,
+  blendWpm,
+  clampObservedWpm,
+  countRemainingWords,
+  countTotalWords,
+  estimateRemainingSeconds,
+  estimateSegmentsSeconds,
+  nominalWpm,
+} from '@/lib/readingTime';
 import { cancelSpeech, createUtterance, loadVoices, speechSupported } from '@/services/ttsService';
 import { mapSpokenWordToSource } from '@/lib/pronunciation';
 import type { SpeechPosition, SpeechSegment, WordRange } from '@/types';
@@ -13,7 +23,18 @@ export interface TtsController {
   voices: SpeechSynthesisVoice[];
   position: SpeechPosition | null;
   progress: number;
+  /** Segundos que faltan (cuenta regresiva en vivo, calibrada con la voz real). */
   remainingSeconds: number;
+  /** Segundos ya leídos en la sesión actual (sin contar pausas). */
+  elapsedSeconds: number;
+  /** Duración estimada total de la sesión actual (transcurrido + restante). */
+  totalSeconds: number;
+  /** Palabras que faltan por leer desde la palabra actual. */
+  remainingWords: number;
+  /** Palabras totales de la sesión actual. */
+  totalWords: number;
+  /** Velocidad efectiva estimada (palabras/min) a la velocidad elegida. */
+  effectiveWpm: number;
   error: string | null;
   play: (startIndex?: number, customSegments?: SpeechSegment[]) => void;
   replay: () => void;
@@ -38,6 +59,11 @@ export function useTts(segments: SpeechSegment[]): TtsController {
   const [position, setPosition] = useState<SpeechPosition | null>(null);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  // Reloj de la cuenta regresiva: se actualiza cada 250 ms mientras se habla.
+  const [now, setNow] = useState(() => performance.now());
+  const [effectiveWpm, setEffectiveWpm] = useState(() => nominalWpm(1));
+  const [wordsRemaining, setWordsRemaining] = useState(0);
+  const [sessionTotal, setSessionTotal] = useState<{ words: number; seconds: number } | null>(null);
   const tokenRef = useRef(0);
   const instanceIdRef = useRef(`tts-${Math.random().toString(36).slice(2)}`);
   const activeSegmentsRef = useRef(segments);
@@ -49,6 +75,13 @@ export function useTts(segments: SpeechSegment[]): TtsController {
   const pausedRef = useRef(false);
   const receivedBoundaryRef = useRef(false);
   const positionRef = useRef<SpeechPosition | null>(null);
+  // Calibración del tiempo restante con la velocidad real de la voz.
+  const baseWpmRef = useRef(BASE_WORDS_PER_MINUTE);
+  const anchorRef = useRef<{ at: number; remaining: number; wordsRemaining: number } | null>(null);
+  const calibRef = useRef<{ at: number; wordsRemaining: number } | null>(null);
+  const playAtRef = useRef(0);
+  const pausedAccumRef = useRef(0);
+  const completedElapsedRef = useRef(0);
   const supported = speechSupported();
 
   const clearFallback = useCallback(() => {
@@ -69,9 +102,18 @@ export function useTts(segments: SpeechSegment[]): TtsController {
     receivedBoundaryRef.current = false;
     clearFallback();
     fallbackContextRef.current = null;
+    baseWpmRef.current = BASE_WORDS_PER_MINUTE;
+    anchorRef.current = null;
+    calibRef.current = null;
+    playAtRef.current = 0;
+    pausedAccumRef.current = 0;
+    completedElapsedRef.current = 0;
     setStatus('idle');
     setProgress(0);
     setError(null);
+    setEffectiveWpm(nominalWpm(1));
+    setWordsRemaining(0);
+    setSessionTotal(null);
     updatePosition(null);
   }, [clearFallback, updatePosition]);
 
@@ -86,7 +128,7 @@ export function useTts(segments: SpeechSegment[]): TtsController {
       const context = fallbackContextRef.current;
       if (!context || context.token !== tokenRef.current || receivedBoundaryRef.current || pausedRef.current) return;
       const elapsedSeconds = (performance.now() - fallbackStartedAtRef.current) / 1000;
-      const wordIndex = Math.min(context.words.length - 1, Math.floor(elapsedSeconds * (180 * settings.rate) / 60));
+      const wordIndex = Math.min(context.words.length - 1, Math.floor(elapsedSeconds * nominalWpm(settings.rate) / 60));
       if (wordIndex < 0) return;
       const word = context.words[wordIndex];
       updatePosition({ segmentId: context.segment.id, segmentIndex: context.index, word: mapSpokenWordToSource(context.segment, word) });
@@ -113,15 +155,31 @@ export function useTts(segments: SpeechSegment[]): TtsController {
     activeSegmentsRef.current = source;
     clearFallback();
     fallbackContextRef.current = null;
+    // Nueva sesión: reinicia la calibración y el reloj. Saltar de párrafo
+    // dentro de una sesión activa conserva el transcurrido y la voz calibrada.
+    const sessionActive = status === 'speaking' || status === 'paused' || status === 'loading';
+    if (!sessionActive) {
+      baseWpmRef.current = BASE_WORDS_PER_MINUTE;
+      playAtRef.current = performance.now();
+      pausedAccumRef.current = 0;
+      completedElapsedRef.current = 0;
+    }
+    anchorRef.current = null;
+    calibRef.current = null;
+    const safeStart = Math.max(0, Math.min(startIndex, source.length - 1));
+    const sessionSegments = source.slice(safeStart);
+    setSessionTotal({ words: countTotalWords(sessionSegments), seconds: estimateSegmentsSeconds(sessionSegments, settings.rate) });
+    setWordsRemaining(countTotalWords(sessionSegments));
+    setEffectiveWpm(baseWpmRef.current * settings.rate);
     updatePosition(null);
     cancelSpeech(instanceIdRef.current);
     setError(null);
     setStatus('loading');
     setProgress(startIndex / source.length);
     window.setTimeout(() => {
-      if (token === tokenRef.current) speakRef.current(Math.max(0, Math.min(startIndex, source.length - 1)), token);
+      if (token === tokenRef.current) speakRef.current(safeStart, token);
     }, 80);
-  }, [clearFallback, segments, supported]);
+  }, [clearFallback, segments, settings.rate, status, supported]);
 
   speakRef.current = (index, token) => {
     const source = activeSegmentsRef.current;
@@ -163,6 +221,7 @@ export function useTts(segments: SpeechSegment[]): TtsController {
       if (index + 1 < source.length) {
         speakRef.current(index + 1, token);
       } else {
+        completedElapsedRef.current = Math.max(0, (performance.now() - playAtRef.current - pausedAccumRef.current) / 1000);
         setProgress(1);
         setStatus('completed');
         updatePosition(null);
@@ -180,15 +239,27 @@ export function useTts(segments: SpeechSegment[]): TtsController {
     pausedAtRef.current = performance.now();
     window.speechSynthesis.pause();
     clearFallback();
+    // Congela la cuenta regresiva en su valor actual (no sigue bajando en pausa).
+    const anchor = anchorRef.current;
+    if (anchor) {
+      const frozen = Math.max(0, anchor.remaining - (pausedAtRef.current - anchor.at) / 1000);
+      anchorRef.current = { ...anchor, at: pausedAtRef.current, remaining: frozen };
+    }
     setStatus('paused');
   }, [clearFallback, status, supported]);
 
   const resume = useCallback(() => {
     if (status !== 'paused' || !supported) return;
     // Excluye el tiempo pausado de la estimación sin reiniciar el párrafo.
-    fallbackStartedAtRef.current += performance.now() - pausedAtRef.current;
+    const resumedAt = performance.now();
+    const pausedFor = resumedAt - pausedAtRef.current;
+    fallbackStartedAtRef.current += pausedFor;
+    pausedAccumRef.current += pausedFor;
     pausedRef.current = false;
     window.speechSynthesis.resume();
+    // Desplaza el ancla y la calibración para que la pausa no cuente como lectura.
+    if (anchorRef.current) anchorRef.current = { ...anchorRef.current, at: resumedAt };
+    if (calibRef.current) calibRef.current = { ...calibRef.current, at: resumedAt };
     setStatus('speaking');
     if (!receivedBoundaryRef.current) runFallback();
   }, [runFallback, status, supported]);
@@ -244,13 +315,69 @@ export function useTts(segments: SpeechSegment[]): TtsController {
     cancelSpeech(instanceIdRef.current);
   }, [clearFallback]);
 
-  const remainingSeconds = useMemo(() => {
-    if (status === 'completed') return 0;
+  // Ancla de la cuenta regresiva: cada palabra/párrafo nuevo recalcula el
+  // restante desde la palabra actual y calibra la velocidad con la voz real.
+  useEffect(() => {
+    if (status !== 'speaking') return;
     const source = activeSegmentsRef.current;
-    const index = position?.segmentIndex ?? 0;
-    const remaining = source.slice(index).map(({ text }) => text).join(' ');
-    return estimateSeconds(remaining, settings.rate);
-  }, [position, settings.rate, segmentSignature, status]);
+    const wordsLeft = countRemainingWords(source, position);
+    const at = performance.now();
+    const calib = calibRef.current;
+    if (!calib || wordsLeft > calib.wordsRemaining) {
+      calibRef.current = { at, wordsRemaining: wordsLeft };
+    } else if (wordsLeft < calib.wordsRemaining) {
+      const elapsed = (at - calib.at) / 1000;
+      if (elapsed >= 2) {
+        const observedBase = ((calib.wordsRemaining - wordsLeft) / elapsed) * 60 / settings.rate;
+        baseWpmRef.current = blendWpm(baseWpmRef.current, clampObservedWpm(observedBase, BASE_WORDS_PER_MINUTE), 0.3);
+        setEffectiveWpm(baseWpmRef.current * settings.rate);
+        calibRef.current = { at, wordsRemaining: wordsLeft };
+      }
+    }
+    const effective = baseWpmRef.current * settings.rate;
+    anchorRef.current = { at, remaining: estimateRemainingSeconds(source, position, effective), wordsRemaining: wordsLeft };
+    setWordsRemaining(wordsLeft);
+    setNow(at);
+  }, [position, settings.rate, status]);
+
+  // Reloj de la cuenta regresiva mientras se habla (interpola entre palabras).
+  useEffect(() => {
+    if (status !== 'speaking') return;
+    setNow(performance.now());
+    const id = window.setInterval(() => setNow(performance.now()), 250);
+    return () => window.clearInterval(id);
+  }, [status]);
+
+  const nominalTotalSeconds = useMemo(
+    () => estimateSegmentsSeconds(segments, settings.rate),
+    [segments, settings.rate],
+  );
+  const nominalTotalWords = useMemo(() => countTotalWords(segments), [segments]);
+
+  const anchor = anchorRef.current;
+  let remainingSeconds: number;
+  let elapsedSeconds: number;
+  if (status === 'completed') {
+    elapsedSeconds = completedElapsedRef.current;
+    remainingSeconds = 0;
+  } else if (status === 'paused' && anchor) {
+    remainingSeconds = anchor.remaining;
+    elapsedSeconds = Math.max(0, (pausedAtRef.current - playAtRef.current - pausedAccumRef.current) / 1000);
+  } else if ((status === 'speaking' || status === 'loading') && anchor) {
+    remainingSeconds = Math.max(0, anchor.remaining - (now - anchor.at) / 1000);
+    elapsedSeconds = Math.max(0, (now - playAtRef.current - pausedAccumRef.current) / 1000);
+  } else if (status === 'speaking' || status === 'loading' || status === 'paused') {
+    // Sesión activa pero aún sin ancla (primeros milisegundos tras pulsar Leer).
+    remainingSeconds = sessionTotal?.seconds ?? nominalTotalSeconds;
+    const end = status === 'paused' ? pausedAtRef.current : now;
+    elapsedSeconds = Math.max(0, (end - playAtRef.current - pausedAccumRef.current) / 1000);
+  } else {
+    remainingSeconds = nominalTotalSeconds;
+    elapsedSeconds = 0;
+  }
+  const totalSeconds = status === 'completed' ? elapsedSeconds : elapsedSeconds + remainingSeconds;
+  const totalWords = sessionTotal?.words ?? nominalTotalWords;
+  const remainingWords = status === 'idle' || status === 'error' ? totalWords : wordsRemaining;
 
   return {
     supported,
@@ -259,6 +386,11 @@ export function useTts(segments: SpeechSegment[]): TtsController {
     position,
     progress,
     remainingSeconds,
+    elapsedSeconds,
+    totalSeconds,
+    remainingWords,
+    totalWords,
+    effectiveWpm,
     error,
     play,
     replay,

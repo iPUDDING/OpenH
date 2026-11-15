@@ -1,5 +1,6 @@
-import type { SpeechSegment, WordRange } from '@/types';
+import type { MathSpeechRange, SpeechSegment, WordRange } from '@/types';
 import { findMatches, findSentenceRange } from './text';
+import { latexToSpeech } from './mathSpeech';
 
 const BLOCK_SELECTOR = 'p, li, h1, h2, h3, h4, h5, h6, pre, blockquote, td, th';
 
@@ -19,25 +20,57 @@ export interface DocumentTextMap {
   segments: DomSpeechSegment[];
 }
 
-function textNodes(element: HTMLElement): TextNodeOffset[] {
-  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
-    acceptNode(node) {
-      const parent = node.parentElement;
-      if (!parent || parent.closest('script, style, [data-no-tts]')) return NodeFilter.FILTER_REJECT;
-      return node.textContent ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
-    },
-  });
+/**
+ * Recorre un bloque en orden de documento recogiendo sus nodos de texto
+ * visibles y sus fórmulas KaTeX como rangos con lectura en español.
+ * El MathML de KaTeX (invisible, con la anotación del código TeX) se excluye:
+ * si se incluyera, la voz leería el código fuente literalmente y el
+ * auto-scroll saltaría entre nodos invisibles.
+ */
+function collectSegmentParts(element: HTMLElement): { nodes: TextNodeOffset[]; mathRanges: MathSpeechRange[]; text: string } {
   const nodes: TextNodeOffset[] = [];
-  let offset = 0;
-  let current = walker.nextNode() as Text | null;
-  while (current) {
-    const text = (current.textContent ?? '').replace(/\u00a0/g, ' ');
-    if (text !== current.textContent) current.textContent = text;
-    nodes.push({ node: current, start: offset, end: offset + text.length });
-    offset += text.length;
-    current = walker.nextNode() as Text | null;
-  }
-  return nodes;
+  const mathRanges: MathSpeechRange[] = [];
+  let text = '';
+  const pushTextNode = (node: Text) => {
+    const value = (node.textContent ?? '').replace(/\u00a0/g, ' ');
+    if (value !== node.textContent) node.textContent = value;
+    if (!value) return;
+    nodes.push({ node, start: text.length, end: text.length + value.length });
+    text += value;
+  };
+  const walk = (parent: Node) => {
+    for (const child of Array.from(parent.childNodes)) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        pushTextNode(child as Text);
+        continue;
+      }
+      if (child.nodeType !== Node.ELEMENT_NODE) continue;
+      const el = child as HTMLElement;
+      if (el.closest('script, style, [data-no-tts]')) continue;
+      if (el.classList.contains('katex')) {
+        const tex = el.querySelector('annotation[encoding="application/x-tex"]')?.textContent ?? '';
+        const start = text.length;
+        const html = el.querySelector('.katex-html');
+        if (html) {
+          const walker = document.createTreeWalker(html, NodeFilter.SHOW_TEXT, {
+            acceptNode: (node) => (node.textContent ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT),
+          });
+          let glyph = walker.nextNode() as Text | null;
+          while (glyph) {
+            pushTextNode(glyph);
+            glyph = walker.nextNode() as Text | null;
+          }
+        }
+        const glyphText = text.slice(start);
+        mathRanges.push({ start, end: text.length, tex, spoken: tex ? latexToSpeech(tex) : glyphText });
+        continue;
+      }
+      if (el.tagName.toLowerCase() === 'math' || el.classList.contains('katex-mathml')) continue;
+      walk(el);
+    }
+  };
+  walk(element);
+  return { nodes, mathRanges, text };
 }
 
 export function buildDomTextMap(root: HTMLElement): DocumentTextMap {
@@ -45,10 +78,9 @@ export function buildDomTextMap(root: HTMLElement): DocumentTextMap {
     .filter((element) => !element.querySelector(BLOCK_SELECTOR));
   const elements = candidates.length ? candidates : [root];
   const segments = elements.flatMap((element, index): DomSpeechSegment[] => {
-    const nodes = textNodes(element);
-    const text = nodes.map(({ node }) => node.textContent ?? '').join('');
+    const { nodes, mathRanges, text } = collectSegmentParts(element);
     if (!text.trim()) return [];
-    return [{ id: element.id || `dom-segment-${index}`, element, nodes, text }];
+    return [{ id: element.id || `dom-segment-${index}`, element, nodes, text, ...(mathRanges.length ? { mathRanges } : {}) }];
   });
   return { root, segments };
 }
@@ -138,7 +170,9 @@ export function applySpeechHighlights(
     if (phraseRange) paintOverlay(map.root, phraseRange, 'phrase');
     if (wordRange) paintOverlay(map.root, wordRange, 'word');
   }
-  if (autoScroll && wordRange) scrollRangeIntoView(wordRange, segment.element);
+  // Los rangos colapsados (p. ej. una palabra dentro de una fórmula) no deben
+  // mover el scroll: su rectángulo es 0 y haría saltar el visor.
+  if (autoScroll && wordRange && !wordRange.collapsed) scrollRangeIntoView(wordRange, segment.element);
   phraseRange?.detach();
 }
 
@@ -178,7 +212,7 @@ export function applySearchHighlights(map: DocumentTextMap | null, query: string
 
 export function scrollRangeIntoView(range: Range, element: HTMLElement): void {
   const rect = range.getClientRects()[0] ?? range.getBoundingClientRect();
-  if (!rect) return;
+  if (!rect || (rect.width < 1 && rect.height < 1)) return;
   let container = element.parentElement;
   while (container && container !== document.body) {
     const style = getComputedStyle(container);

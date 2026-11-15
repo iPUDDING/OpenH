@@ -16,13 +16,20 @@ export function formatClock(totalSeconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
+/**
+ * Duración precisa para el tiempo de lectura: `mm:ss` (o `h:mm:ss`).
+ * Sustituye al antiguo redondeo a minutos enteros, que ocultaba los segundos
+ * y hacía saltar el "tiempo restante" de a un minuto por vez.
+ */
 export function formatDuration(totalSeconds: number): string {
-  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return '0 min';
-  const minutes = Math.ceil(totalSeconds / 60);
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return rest ? `${hours} h ${rest} min` : `${hours} h`;
+  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) return '00:00';
+  const safe = Math.ceil(totalSeconds);
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
+  const seconds = safe % 60;
+  const mm = String(minutes).padStart(2, '0');
+  const ss = String(seconds).padStart(2, '0');
+  return hours > 0 ? `${hours}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
 export function basename(filePath: string): string {

@@ -58,7 +58,28 @@ export function applyPronunciationRules(text: string, rules: PronunciationRule[]
 
 export function prepareSpeechSegments(segments: SpeechSegment[], rules: PronunciationRule[]): SpeechSegment[] {
   if (!rules.some((rule) => rule.enabled)) return segments;
-  return segments.map((segment) => ({ ...segment, ...applyPronunciationRules(segment.text, rules) }));
+  return segments.map((segment) => {
+    const result = applyPronunciationRules(segment.text, rules);
+    // Sin coincidencias se conserva el segmento (y su mapa previo, p. ej. de fórmulas).
+    if (!result.offsetMap) return { ...segment, ...result };
+    // El segmento ya puede venir transformado (fórmulas): se componen los
+    // mapas para que el resaltado vuelva siempre al texto visible original.
+    const priorMap = segment.offsetMap;
+    if (!priorMap) return { ...segment, ...result };
+    const offsetMap = result.offsetMap.map((index) => priorMap[index] ?? index);
+    const pronunciationRanges = result.pronunciationRanges?.map((range) => ({
+      ...range,
+      sourceStart: priorMap[range.sourceStart] ?? range.sourceStart,
+      sourceEnd: priorMap[range.sourceEnd] ?? range.sourceEnd,
+    }));
+    return {
+      ...segment,
+      text: result.text,
+      sourceText: segment.sourceText ?? segment.text,
+      offsetMap,
+      pronunciationRanges,
+    };
+  });
 }
 
 export function mapSpokenWordToSource(segment: SpeechSegment, word: WordRange | null): WordRange | null {

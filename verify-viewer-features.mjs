@@ -181,7 +181,7 @@ await tauriPage.addInitScript(({ filePath, bytes }) => {
     unregisterCallback: () => undefined,
     invoke: async (command) => {
       window.__tauriCommands.push(command);
-      if (command === 'plugin:app|version') return '1.0.7';
+      if (command === 'plugin:app|version') return '1.0.9';
       if (command === 'plugin:event|listen') return 1;
       if (command === 'plugin:updater|check') return null;
       if (command === 'plugin:dialog|open') return filePath;
@@ -250,9 +250,16 @@ await ttsPage.getByLabel('Markdown inicial').fill(
 await ttsPage.getByRole('button', { name: 'Abrir borrador' }).click();
 await ttsPage.locator('.markdown-body h1').waitFor();
 
+// Tiempo restante en reposo: muestra la duración total estimada en mm:ss
+const viewerTime = ttsPage.locator('span[title^="Tiempo estimado"]');
+await viewerTime.waitFor();
+assert.match((await viewerTime.textContent()) ?? '', /en total/);
+assert.match((await viewerTime.textContent()) ?? '', /\d{2}:\d{2}/);
+
 await ttsPage.getByRole('button', { name: 'Leer', exact: true }).click();
 await ttsPage.waitForFunction(() => window.__spoken.length === 1);
 assert.equal(await ttsPage.evaluate(() => window.__spoken[0]), 'Título principal');
+assert.match((await viewerTime.textContent()) ?? '', /Quedan \d{2}:\d{2}/);
 const h1Highlight = await ttsPage.evaluate(() => {
   const word = Array.from(window.CSS.highlights.get('openhub-word') ?? [])[0];
   const phrase = Array.from(window.CSS.highlights.get('openhub-phrase') ?? [])[0];
@@ -340,6 +347,76 @@ await ttsPage.getByRole('button', { name: 'Reanudar', exact: true }).waitFor();
 assert.equal(await ttsPage.evaluate(() => window.__ttsPausedCalls), pausesBeforeStudioSpace + 1);
 assert.equal(await ttsPage.evaluate(() => window.__spoken.length), 4);
 checks.push('En Estudio TTS, Espacio pausa y reanuda incluso tras pulsar un párrafo');
+
+// Tiempo restante en Estudio TTS: la cuenta regresiva baja al avanzar de párrafo
+await ttsPage.getByRole('button', { name: 'Reanudar', exact: true }).click();
+await ttsPage.getByRole('button', { name: 'Pausar', exact: true }).waitFor();
+const studioTime = ttsPage.locator('section[aria-label="Estudio de texto a voz"] span[title^="Tiempo estimado"]');
+const studioBefore = (await studioTime.textContent()) ?? '';
+assert.match(studioBefore, /Quedan \d{2}:\d{2} de \d{2}:\d{2}/);
+const studioWordsBefore = Number(studioBefore.match(/(\d+)\/(\d+) palabras/)?.[1] ?? '0');
+await ttsPage.evaluate(() => window.__utterances.at(-1).onend());
+await ttsPage.waitForFunction(() => window.__spoken.length === 5);
+const studioAfter = (await studioTime.textContent()) ?? '';
+assert.match(studioAfter, /Quedan \d{2}:\d{2} de \d{2}:\d{2}/);
+const studioWordsAfter = Number(studioAfter.match(/(\d+)\/(\d+) palabras/)?.[1] ?? '0');
+assert.ok(studioWordsAfter < studioWordsBefore, `Las palabras restantes deben bajar (${studioWordsBefore} → ${studioWordsAfter})`);
+checks.push('El tiempo restante muestra la duración total en reposo y la cuenta regresiva mm:ss baja al avanzar de párrafo');
+
+// 6. Fórmulas LaTeX: la voz lee español natural (sin código fuente) y el subrayado sigue conectado
+const mathContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'es-ES' });
+const mathPage = await mathContext.newPage();
+watch(mathPage);
+await mathPage.addInitScript(() => {
+  window.__spoken = [];
+  window.__utterances = [];
+  window.__ttsPausedCalls = 0;
+  window.__ttsResumedCalls = 0;
+  window.__ttsCanceledCalls = 0;
+  class FakeUtterance {
+    constructor(text) { this.text = text; this.rate = 1; this.pitch = 1; this.volume = 1; this.lang = 'es-ES'; }
+  }
+  Object.defineProperty(window, 'SpeechSynthesisUtterance', { configurable: true, value: FakeUtterance });
+  Object.defineProperty(window, 'speechSynthesis', {
+    configurable: true,
+    value: {
+      getVoices: () => [{ name: 'Voz QA local', lang: 'es-ES', voiceURI: 'qa-local' }],
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      speak: (utterance) => { window.__spoken.push(utterance.text); window.__utterances.push(utterance); },
+      pause: () => { window.__ttsPausedCalls += 1; },
+      resume: () => { window.__ttsResumedCalls += 1; },
+      cancel: () => { window.__ttsCanceledCalls += 1; },
+    },
+  });
+});
+
+await mathPage.goto('http://127.0.0.1:1420', { waitUntil: 'networkidle' });
+await mathPage.getByLabel('Markdown inicial').fill(
+  '# Fórmulas\n\nEl rendimiento es $\\ge 90\\,\\%$ y $\\frac{1}{2}$ más $x^2$.\n\nPárrafo normal de cierre.'
+);
+await mathPage.getByRole('button', { name: 'Abrir borrador' }).click();
+await mathPage.locator('.markdown-body h1').waitFor();
+await mathPage.locator('.katex').first().waitFor();
+await mathPage.getByRole('button', { name: 'Leer', exact: true }).click();
+await mathPage.waitForFunction(() => window.__spoken.length === 1);
+assert.equal(await mathPage.evaluate(() => window.__spoken[0]), 'Fórmulas');
+await mathPage.evaluate(() => window.__utterances.at(-1).onend());
+await mathPage.waitForFunction(() => window.__spoken.length === 2);
+const mathSpoken = await mathPage.evaluate(() => window.__spoken[1]);
+assert.match(mathSpoken, /mayor o igual que 90 por ciento/);
+assert.match(mathSpoken, /fracción 1 sobre 2/);
+assert.match(mathSpoken, /al cuadrado/);
+assert.equal(mathSpoken.includes('\\'), false);
+assert.equal(mathSpoken.includes('$'), false);
+const mathHighlight = await mathPage.evaluate(() => {
+  const word = Array.from(window.CSS.highlights.get('openhub-word') ?? [])[0];
+  return { connected: Boolean(word?.startContainer?.isConnected), text: word?.toString() ?? '' };
+});
+assert.equal(mathHighlight.connected, true);
+await mathPage.screenshot({ path: `${output}21-formulas-tts.png`, animations: 'disabled' });
+checks.push('Las fórmulas LaTeX se leen en español natural sin código fuente y el subrayado permanece conectado');
+await mathContext.close();
 
 console.log(JSON.stringify({ checks, errors }, null, 2));
 assert.equal(errors.length, 0, `Errores de ejecución: ${errors.join('\n')}`);

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { AudioLines, Pause, Play, SkipBack, SkipForward, Square, Trash2, Volume2 } from 'lucide-react';
+import { AudioLines, Clock, Pause, Play, SkipBack, SkipForward, Square, Trash2, Volume2 } from 'lucide-react';
 import { useSpeechSpaceShortcut, useTts } from '@/hooks/useTts';
 import { useAppStore } from '@/store/useAppStore';
 import { countWords, extractWordRanges, splitParagraphs } from '@/lib/text';
 import { formatDuration } from '@/lib/utils';
 import { prepareSpeechSegments } from '@/lib/pronunciation';
+import { applyMathSpeech } from '@/lib/mathSpeech';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Input';
 import { SelectField } from '@/components/ui/Select';
@@ -22,7 +23,7 @@ export default function TtsStudio() {
   const readerFontSize = useAppStore((state) => state.readerFontSize);
   const readerLineHeight = useAppStore((state) => state.readerLineHeight);
   const sourceSegments = useMemo(() => splitParagraphs(text), [text]);
-  const segments = useMemo(() => prepareSpeechSegments(sourceSegments, pronunciationRules), [sourceSegments, pronunciationRules]);
+  const segments = useMemo(() => prepareSpeechSegments(applyMathSpeech(sourceSegments), pronunciationRules), [sourceSegments, pronunciationRules]);
   const controller = useTts(segments);
   const sectionRef = useRef<HTMLElement>(null);
   const readingRef = useRef<HTMLDivElement>(null);
@@ -66,7 +67,21 @@ export default function TtsStudio() {
           <Button variant="outline" size="icon" onClick={controller.previous} disabled={!active} aria-label="Párrafo anterior"><SkipBack className="h-4 w-4" /></Button>
           <Button variant="outline" size="icon" onClick={controller.next} disabled={!active} aria-label="Párrafo siguiente"><SkipForward className="h-4 w-4" /></Button>
           <Button variant="outline" size="icon" onClick={controller.stop} disabled={!active && controller.status !== 'completed'} aria-label="Detener"><Square className="h-4 w-4" /></Button>
-          <span className="ml-2 text-xs text-muted-foreground">{active || controller.status === 'completed' ? `≈ ${formatDuration(controller.remainingSeconds)} restantes` : 'Haz clic en un párrafo para empezar desde él'}</span>
+          <span
+            className="ml-2 flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums"
+            title={`Tiempo estimado según la velocidad real de la voz (${Math.round(controller.effectiveWpm)} palabras/min). Se ajusta mientras lees.`}
+          >
+            <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            {controller.status === 'completed' ? (
+              <>Lectura completada en {formatDuration(controller.totalSeconds)}</>
+            ) : controller.status === 'paused' ? (
+              <>En pausa · quedan {formatDuration(controller.remainingSeconds)} de {formatDuration(controller.totalSeconds)}</>
+            ) : active ? (
+              <>Quedan {formatDuration(controller.remainingSeconds)} de {formatDuration(controller.totalSeconds)} · {controller.remainingWords}/{controller.totalWords} palabras</>
+            ) : (
+              <>Duración estimada ≈ {formatDuration(controller.totalSeconds)} · {controller.totalWords} palabras — Haz clic en un párrafo para empezar desde él</>
+            )}
+          </span>
         </div>
         <Progress value={controller.progress * 100} className="mt-3" label="Progreso del estudio TTS" />
         {!controller.supported && <p role="alert" className="mt-2 text-xs text-destructive">Web Speech API no está disponible en este entorno.</p>}

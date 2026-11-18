@@ -34,6 +34,9 @@ await capture('08-indice-lectura');
 
 await page.keyboard.press('Control+k');
 await page.getByRole('dialog', { name: 'Paleta de comandos' }).waitFor();
+await page.getByLabel('Buscar comandos').fill('configurable');
+await page.getByRole('option').filter({ hasText: 'Texto configurable' }).waitFor();
+checks.push('La búsqueda global encuentra contenido de documentos recientes');
 await page.getByLabel('Buscar comandos').fill('mapas');
 await page.waitForTimeout(250);
 await capture('07-paleta-comandos');

@@ -269,7 +269,7 @@
 
 /* Barra de progreso de lectura (fina, arriba del documento). */
 .reading-progress { height: 3px; flex-shrink: 0; background: hsl(var(--muted)); }
-.reading-progress > span { display: block; height: 100%; background: hsl(var(--primary)); transition: width 120ms linear; }
+.reading-progress > span { display: block; height: 100%; background: hsl(var(--primary)); transform: scaleX(0); transform-origin: left center; will-change: transform; transition: transform 120ms linear; }
 
 /* Transiciones suaves al cambiar de herramienta y de tema. */
 .tool-panel { animation: tool-in 220ms ease-out; }

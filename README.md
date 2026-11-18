@@ -12,6 +12,7 @@ Aplicación de escritorio **Windows 10/11**, que integra un visor Markdown/PDF, 
 - **Productividad:** pantalla completa nativa/web global con botón y `F11` (incluso con la barra superior oculta), creación de textos y apertura de archivos desde Recientes, paleta `Ctrl+K`, barra superior ocultable con `Ctrl+Shift+H`, índice Markdown, búsqueda PDF y búsqueda/centrado de temas Markmap.
 - **Lectura accesible:** tamaño, interlineado y ancho configurables; pronunciación TTS personalizada sin alterar el texto ni perder su resaltado.
 - **Respaldo local:** exportación/restauración JSON versionada y validada de preferencias, pronunciaciones y recientes.
+- **Rendimiento 1.4.1:** visor Markdown/KaTeX diferido, progreso de lectura sin renders por evento de scroll y búsqueda global con normalización reutilizada. [Mediciones y metodología](docs/RENDIMIENTO-1.4.1.md).
 - **Actualizaciones firmadas:** aviso al iniciar, descarga con progreso, instalación con aceptación y reinicio mediante GitHub Releases. [Configuración](docs/ACTUALIZACIONES.md).
 - **Privacidad:** sin cuentas, analítica ni recursos remotos. El estado se conserva en `localStorage` de WebView2; únicamente el actualizador contacta GitHub Releases.
 
@@ -66,8 +67,8 @@ La verificación E2E opcional y reproducible de las nuevas funciones está docum
 Instaladores generados:
 
 ```text
-src-tauri/target/release/bundle/nsis/OpenHub_1.4.0_x64-setup.exe
-src-tauri/target/release/bundle/msi/OpenHub_1.4.0_x64_en-US.msi
+src-tauri/target/release/bundle/nsis/OpenHub_1.4.1_x64-setup.exe
+src-tauri/target/release/bundle/msi/OpenHub_1.4.1_x64_en-US.msi
 ```
 
 > Los nombres pueden variar según la arquitectura y el idioma del bundle.
@@ -79,7 +80,7 @@ src-tauri/target/release/bundle/msi/OpenHub_1.4.0_x64_en-US.msi
    ```powershell
    git init
    git add .
-   git commit -m "OpenHub 1.4.0"
+   git commit -m "OpenHub 1.4.1"
    git branch -M main
    git remote add origin https://github.com/USUARIO/REPOSITORIO.git
    git push -u origin main

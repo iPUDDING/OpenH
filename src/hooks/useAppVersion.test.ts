@@ -7,11 +7,11 @@ describe('versión de OpenHub', () => {
   });
 
   it('tolera que tauri-action presente package.json sin version', () => {
-    expect(resolvePackageVersion({})).toBe('1.4.0');
+    expect(resolvePackageVersion({})).toBe('1.4.1');
   });
 
   it('descarta valores vacíos o de otro tipo', () => {
-    expect(resolvePackageVersion({ version: '  ' })).toBe('1.4.0');
-    expect(resolvePackageVersion({ version: null })).toBe('1.4.0');
+    expect(resolvePackageVersion({ version: '  ' })).toBe('1.4.1');
+    expect(resolvePackageVersion({ version: null })).toBe('1.4.1');
   });
 });

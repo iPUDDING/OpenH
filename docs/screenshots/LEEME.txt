@@ -1,4 +1,4 @@
-OPENHUB 1.4.0 — CAPTURAS REALES
+OPENHUB 1.4.1 — CAPTURAS REALES
 ================================
 
 Estas imágenes fueron capturadas directamente del build de producción de

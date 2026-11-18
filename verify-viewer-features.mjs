@@ -181,7 +181,7 @@ await tauriPage.addInitScript(({ filePath, bytes }) => {
     unregisterCallback: () => undefined,
     invoke: async (command) => {
       window.__tauriCommands.push(command);
-      if (command === 'plugin:app|version') return '1.4.0';
+      if (command === 'plugin:app|version') return '1.4.1';
       if (command === 'plugin:event|listen') return 1;
       if (command === 'plugin:updater|check') return null;
       if (command === 'plugin:dialog|open') return filePath;
@@ -357,6 +357,12 @@ assert.match(studioBefore, /Quedan \d{2}:\d{2} de \d{2}:\d{2}/);
 const studioWordsBefore = Number(studioBefore.match(/(\d+)\/(\d+) palabras/)?.[1] ?? '0');
 await ttsPage.evaluate(() => window.__utterances.at(-1).onend());
 await ttsPage.waitForFunction(() => window.__spoken.length === 5);
+// La locución de la nueva frase se registra antes del commit React que actualiza el contador.
+await ttsPage.waitForFunction((before) => {
+  const text = document.querySelector('section[aria-label="Estudio de texto a voz"] span[title^="Tiempo estimado"]')?.textContent ?? '';
+  const remaining = Number(text.match(/· (\d+)\/(\d+) palabras/)?.[1] ?? before);
+  return remaining < before;
+}, studioWordsBefore);
 const studioAfter = (await studioTime.textContent()) ?? '';
 assert.match(studioAfter, /Quedan \d{2}:\d{2} de \d{2}:\d{2}/);
 const studioWordsAfter = Number(studioAfter.match(/(\d+)\/(\d+) palabras/)?.[1] ?? '0');
@@ -634,12 +640,16 @@ const readingContext = await browser.newContext({ viewport: { width: 1440, heigh
 const readingPage = await readingContext.newPage();
 watch(readingPage);
 await readingPage.goto('http://127.0.0.1:1420', { waitUntil: 'networkidle' });
-await readingPage.getByLabel('Markdown inicial').fill('# Guía de lectura\n\nPrimer párrafo con contenido suficiente para medir el progreso de lectura del documento completo.\n\nSegundo párrafo del documento para que haya desplazamiento vertical.\n\nTercer párrafo final del documento de prueba.');
+const longReadingBody = Array.from({ length: 24 }, (_, index) => `Párrafo ${index + 1} con contenido suficiente para comprobar la actualización fluida del progreso sin renders repetidos.`).join('\n\n');
+await readingPage.getByLabel('Markdown inicial').fill(`# Guía de lectura\n\n${longReadingBody}`);
 await readingPage.getByRole('button', { name: 'Abrir borrador' }).click();
 await readingPage.locator('.markdown-body p').first().waitFor();
-// Barra de progreso visible con rol progressbar.
+// La barra accesible se actualiza al desplazarse; el scroll no provoca renders React por evento.
 assert.equal(await readingPage.getByRole('progressbar', { name: 'Progreso de lectura' }).count(), 1);
-checks.push('Barra de progreso de lectura visible en el visor');
+await readingPage.locator('.markdown-body').evaluate((article) => { const scroller = article.parentElement; if (scroller) scroller.scrollTop = scroller.scrollHeight; });
+await readingPage.waitForFunction(() => Number(document.querySelector('[aria-label="Progreso de lectura"]')?.getAttribute('aria-valuenow') ?? 0) > 0);
+await readingPage.locator('.markdown-body').evaluate((article) => { if (article.parentElement) article.parentElement.scrollTop = 0; });
+checks.push('Barra de progreso de lectura visible y actualizada al desplazarse');
 // Estadísticas en el subtítulo: palabras, caracteres y minutos.
 const subtitle = await readingPage.locator('header p.truncate').first().innerText();
 assert.match(subtitle, /palabras/);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { createPortal } from 'react-dom';
 import { AudioLines, BrainCircuit, Clock3, FileText, FolderOpen, Maximize, Minimize, Moon, PanelLeft, PanelTopClose, Play, Search, Settings, SkipForward, Sun } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
@@ -18,6 +18,7 @@ interface Command {
 
 export function CommandPalette({ open, onClose, onToggleSidebar, onToggleHeader, onToggleFullscreen, fullscreen = false }: { open: boolean; onClose: () => void; onToggleSidebar: () => void; onToggleHeader: () => void; onToggleFullscreen: () => void; fullscreen?: boolean }) {
   const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -54,19 +55,26 @@ export function CommandPalette({ open, onClose, onToggleSidebar, onToggleHeader,
     ];
   }, [fullscreen, onToggleFullscreen, onToggleHeader, onToggleSidebar, pomodoro, recents, setActiveTool, setTheme, theme]);
 
-  // Búsqueda global: además de comandos, busca dentro del contenido de los
-  // documentos recientes (Markdown) y muestra el fragmento coincidente.
+  // Normaliza el contenido una sola vez por cambio de recientes y solo cuando
+  // la paleta está abierta; useDeferredValue evita bloquear la escritura.
+  const searchableRecents = useMemo(() => {
+    if (!open) return [] as Array<{ recent: (typeof recents)[number]; normalized: string }>;
+    return recents
+      .filter((recent) => recent.kind === 'markdown' && Boolean(recent.content))
+      .map((recent) => ({ recent, normalized: normalizeSearchText(recent.content ?? '') }));
+  }, [open, recents]);
+
+  // Búsqueda global: comandos y fragmentos de Markdown reciente.
   const contentMatches = useMemo(() => {
-    const needle = normalizeSearchText(query).trim();
-    if (needle.length < 2) return [] as Command[];
+    const needle = normalizeSearchText(deferredQuery).trim();
+    if (!open || needle.length < 2) return [] as Command[];
     const results: Command[] = [];
-    for (const recent of recents) {
-      if (recent.kind !== 'markdown' || !recent.content) continue;
-      const haystack = normalizeSearchText(recent.content);
-      const index = haystack.indexOf(needle);
+    for (const { recent, normalized } of searchableRecents) {
+      const index = normalized.indexOf(needle);
       if (index === -1) continue;
+      const rawContent = recent.content ?? '';
       const start = Math.max(0, index - 40);
-      const snippet = recent.content.slice(start, index + needle.length + 60).replace(/\s+/g, ' ').trim();
+      const snippet = rawContent.slice(start, index + needle.length + 60).replace(/\s+/g, ' ').trim();
       results.push({
         id: `content-${recent.id}`,
         title: recent.name,
@@ -78,7 +86,7 @@ export function CommandPalette({ open, onClose, onToggleSidebar, onToggleHeader,
       if (results.length >= 6) break;
     }
     return results;
-  }, [query, recents, setActiveTool]);
+  }, [deferredQuery, open, searchableRecents, setActiveTool]);
 
   const filtered = useMemo(() => {
     const terms = normalizeSearchText(query).split(/\s+/).filter(Boolean);

@@ -18,7 +18,7 @@ import { applyMathSpeech } from '@/lib/mathSpeech';
 import { applyDashSpeech } from '@/lib/dashSpeech';
 import { selectedDocumentText } from '@/lib/selection';
 import { basename } from '@/lib/utils';
-import { segmentIndexAtPoint, type DocumentTextMap } from '@/lib/domTextMap';
+import { applySearchHighlights, clearSearchHighlights, segmentIndexAtPoint, type DocumentTextMap } from '@/lib/domTextMap';
 import type { Bookmark, DocNote, OpenedDocument, PaperTheme, RecentDocument, SpeechSegment } from '@/types';
 
 const MarkdownRenderer = lazy(() => import('./MarkdownRenderer').then((module) => ({ default: module.MarkdownRenderer })));
@@ -83,6 +83,8 @@ export default function DocumentViewer() {
   const [pdfPage, setPdfPage] = useState(1);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; segmentIndex: number } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [documentSearchRequest, setDocumentSearchRequest] = useState<{ query: string; documentId: string; requestId: number; activeIndex: number } | null>(null);
+  const [documentSearchCount, setDocumentSearchCount] = useState(0);
   const [outlineOpen, setOutlineOpen] = useState(() => theme === 'apple-outline');
   // El tema Outline abre el índice al activarse; el tema Foco lo cierra.
   useEffect(() => {
@@ -130,6 +132,8 @@ export default function DocumentViewer() {
   const loadDocument = useCallback((document: OpenedDocument) => {
     tts.stop();
     setNotice(null);
+    setDocumentSearchRequest(null);
+    setDocumentSearchCount(0);
     renamingHeaderRef.current = false;
     setRenamingHeader(false);
     setSelectionText('');
@@ -178,6 +182,13 @@ export default function DocumentViewer() {
   useEffect(() => {
     const onOpen = () => { setActiveTool('viewer'); void openDialog(); };
     const onRecent = (event: Event) => void openRecent((event as CustomEvent<RecentDocument>).detail);
+    const onSearchCurrentDocument = (event: Event) => {
+      const detail = (event as CustomEvent<{ query?: string; documentId?: string; requestId?: number }>).detail;
+      const query = detail?.query?.trim();
+      if (!query || !detail.documentId || detail.documentId !== current?.id) return;
+      setDocumentSearchRequest({ query, documentId: detail.documentId, requestId: detail.requestId ?? Date.now(), activeIndex: 0 });
+      setActiveTool('viewer');
+    };
     const onNewDocument = (event: Event) => {
       const requestedName = (event as CustomEvent<{ name?: string }>).detail?.name?.trim();
       const name = requestedName || 'Texto sin título.md';
@@ -197,15 +208,17 @@ export default function DocumentViewer() {
     };
     window.addEventListener('openhub:open', onOpen);
     window.addEventListener('openhub:recent', onRecent);
+    window.addEventListener('openhub:search-current-document', onSearchCurrentDocument);
     window.addEventListener('openhub:new-document', onNewDocument);
     window.addEventListener('openhub:document-renamed', onRenamed);
     return () => {
       window.removeEventListener('openhub:open', onOpen);
       window.removeEventListener('openhub:recent', onRecent);
+      window.removeEventListener('openhub:search-current-document', onSearchCurrentDocument);
       window.removeEventListener('openhub:new-document', onNewDocument);
       window.removeEventListener('openhub:document-renamed', onRenamed);
     };
-  }, [loadDocument, openDialog, openRecent, setActiveTool, setMode]);
+  }, [current?.id, loadDocument, openDialog, openRecent, setActiveTool, setMode]);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -410,6 +423,31 @@ export default function DocumentViewer() {
 
   const handleTextMap = useCallback((map: DocumentTextMap | null) => setTextMap(map), []);
   const handlePdfSegments = useCallback((next: SpeechSegment[]) => setPdfSegments(next), []);
+
+  useEffect(() => {
+    if (!documentSearchRequest || documentSearchRequest.documentId !== current?.id || current.kind === 'pdf' || !textMap) return;
+    const count = applySearchHighlights(textMap, documentSearchRequest.query, documentSearchRequest.activeIndex, true);
+    setDocumentSearchCount(count);
+    setNotice(count
+      ? `${count}${count === 500 ? '+' : ''} ${count === 1 ? 'coincidencia' : 'coincidencias'} de “${documentSearchRequest.query}”. Ctrl+G: siguiente · Ctrl+Mayús+G: anterior.`
+      : `No se encontró “${documentSearchRequest.query}” en este documento.`);
+    return () => clearSearchHighlights(textMap);
+  }, [current?.id, current?.kind, documentSearchRequest, textMap]);
+
+  useEffect(() => {
+    if (!documentSearchRequest || documentSearchRequest.documentId !== current?.id || current.kind === 'pdf') return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLocaleLowerCase() !== 'g' || !documentSearchCount) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.matches('input, textarea, select, [contenteditable="true"]')) return;
+      event.preventDefault();
+      setDocumentSearchRequest((request) => request
+        ? { ...request, activeIndex: (request.activeIndex + (event.shiftKey ? -1 : 1) + documentSearchCount) % documentSearchCount }
+        : request);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [current?.id, current?.kind, documentSearchCount, documentSearchRequest]);
 
   // Progreso de lectura + persistencia de posición (con debounce).
   const positionSaveRef = useRef<number | null>(null);
@@ -698,7 +736,7 @@ export default function DocumentViewer() {
           ) : current.data ? (
             <div onContextMenu={onPdfContextMenu} className="flex min-h-0 flex-1 flex-col">
               <Suspense fallback={<div className="grid flex-1 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /><span className="sr-only">Cargando PDF.js</span></div>}>
-                <PdfRenderer data={current.data} position={tts.position} autoScroll={autoScroll} onSegmentsChange={handlePdfSegments} onPageChange={setPdfPage} />
+                <PdfRenderer data={current.data} position={tts.position} autoScroll={autoScroll} onSegmentsChange={handlePdfSegments} onPageChange={setPdfPage} searchRequest={documentSearchRequest?.documentId === current.id ? documentSearchRequest : null} />
               </Suspense>
             </div>
           ) : (

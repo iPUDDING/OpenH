@@ -93,3 +93,8 @@ No se utilizan mockups, imágenes generadas por IA ni datos pintados para simula
 ## Ciclo de rendimiento 1.4.1
 
 Se trasladó `MarkdownRenderer` y el CSS de KaTeX a un chunk dinámico para no pagar el coste del parser al iniciar sin documento; los plugins remark/rehype se mantienen estables entre renders. El progreso del lector ya no actualiza estado React en cada `scroll`: actualiza la barra y su valor ARIA directamente, mientras la posición guardada se consulta sin suscribir todo el visor al mapa completo. La paleta busca sobre texto normalizado en caché solo cuando está abierta y difiere el query para preservar la respuesta al teclear. Se mide el bundle de producción en [RENDIMIENTO-1.4.1.md](RENDIMIENTO-1.4.1.md). Las regresiones se verifican con 72 tests unitarios y 77 comprobaciones E2E.
+
+
+## Ciclo de interfaz Markmap 1.4.2
+
+Se agregó en la barra del generador un control accesible para ocultar el panel de edición Markdown y expandir el mapa al ancho disponible. El botón cambia a “Mostrar editor Markdown” para restaurar el editor con el mismo contenido; el modo foco existente se conserva. El cambio se valida en Playwright y se captura en `docs/screenshots/mejoras/32-markmap-sin-editor.png`.

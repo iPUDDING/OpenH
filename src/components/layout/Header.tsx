@@ -35,7 +35,7 @@ export function Header({ onToggleSidebar, onOpenCommands, onHide, fullscreenStat
       </div>
       <span className="ml-2 hidden items-center gap-1.5 rounded-full border bg-emerald-500/5 px-2.5 py-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 sm:flex"><CloudOff className="h-3.5 w-3.5" />100% offline</span>
       <button onClick={onOpenCommands} className="ml-auto flex h-8 w-56 items-center gap-2 whitespace-nowrap rounded-md border bg-background px-3 text-xs text-muted-foreground transition hover:bg-accent max-md:w-9 max-md:justify-center max-md:px-0" aria-label="Abrir paleta de comandos">
-        <Search className="h-3.5 w-3.5 shrink-0" /><span className="max-md:hidden">Buscar comandos…</span><kbd className="ml-auto whitespace-nowrap text-[9px] max-md:hidden">Ctrl K</kbd>
+        <Search className="h-3.5 w-3.5 shrink-0" /><span className="max-md:hidden">Buscar comando o texto…</span><kbd className="ml-auto whitespace-nowrap text-[9px] max-md:hidden">Ctrl K</kbd>
       </button>
       <div className="flex items-center gap-2">
         <span className="hidden text-xs text-muted-foreground lg:inline">v{version}</span>

@@ -21,13 +21,14 @@ interface PdfRendererProps {
   onSegmentsChange: (segments: SpeechSegment[]) => void;
   /** Informa la página visible para el menú contextual "leer desde aquí". */
   onPageChange?: (page: number) => void;
+  searchRequest?: { requestId: number; query: string } | null;
 }
 
 function pageText(content: TextContent): string {
   return content.items.map((item) => 'str' in item ? `${item.str}${item.hasEOL ? '\n' : ' '}` : '').join('');
 }
 
-export function PdfRenderer({ data, position, autoScroll, onSegmentsChange, onPageChange }: PdfRendererProps) {
+export function PdfRenderer({ data, position, autoScroll, onSegmentsChange, onPageChange, searchRequest }: PdfRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
@@ -218,6 +219,12 @@ export function PdfRenderer({ data, position, autoScroll, onSegmentsChange, onPa
     setQuery(value);
     setActiveMatch(0);
   };
+
+  useEffect(() => {
+    if (searchRequest?.query) changeQuery(searchRequest.query);
+  // requestId distinguishes two identical searches issued from the command bar.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchRequest?.requestId]);
 
   const setZoom = (next: number) => {
     const clamped = Math.round(clamp(next, 0.5, 3) * 100) / 100;

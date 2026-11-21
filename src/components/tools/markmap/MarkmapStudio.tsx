@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BrainCircuit, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Download, FileCode2, FileImage, FileText, Focus, Maximize, Minimize, Minus, PanelLeftClose, PanelLeftOpen, Plus, Printer, Search } from 'lucide-react';
+import { BrainCircuit, ChevronDown, ChevronUp, ChevronsDownUp, ChevronsUpDown, Download, FileCode2, FileImage, FileText, Focus, Maximize, Minimize, Minus, Plus, Printer, Search } from 'lucide-react';
 import { MarkmapEditor } from './MarkmapEditor';
 import { MarkmapCanvas, type MarkmapCanvasHandle } from './MarkmapCanvas';
 import { PomodoroTimer } from '@/components/tools/tts/PomodoroTimer';
@@ -28,7 +28,6 @@ export default function MarkmapStudio() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const controlsRef = useRef<MarkmapCanvasHandle | null>(null);
   const [focus, setFocus] = useState(false);
-  const [editorVisible, setEditorVisible] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -108,13 +107,6 @@ export default function MarkmapStudio() {
           <Hint label="Expandir todo"><Button variant="ghost" size="icon-sm" onClick={() => controlsRef.current?.toggleAll(false)} aria-label="Expandir todos los nodos"><ChevronsUpDown className="h-4 w-4" /></Button></Hint>
           <Hint label="Colapsar todo"><Button variant="ghost" size="icon-sm" onClick={() => controlsRef.current?.toggleAll(true)} aria-label="Colapsar todos los nodos"><ChevronsDownUp className="h-4 w-4" /></Button></Hint>
           <Hint label="Buscar temas (Ctrl+F)"><Button variant={searchOpen ? 'secondary' : 'ghost'} size="icon-sm" onClick={() => { setSearchOpen((open) => !open); window.setTimeout(() => searchInputRef.current?.focus(), 30); }} aria-label="Buscar temas"><Search className="h-4 w-4" /></Button></Hint>
-          {!focus && (
-            <Hint label={editorVisible ? 'Ocultar editor Markdown' : 'Mostrar editor Markdown'}>
-              <Button variant={editorVisible ? 'ghost' : 'secondary'} size="icon-sm" onClick={() => setEditorVisible((visible) => !visible)} aria-label={editorVisible ? 'Ocultar editor Markdown' : 'Mostrar editor Markdown'}>
-                {editorVisible ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
-              </Button>
-            </Hint>
-          )}
           <Hint label={focus ? 'Salir del modo foco' : 'Modo foco'}><Button variant={focus ? 'secondary' : 'ghost'} size="icon-sm" onClick={() => setFocus((value) => !value)} aria-label="Alternar modo foco">{focus ? <Minimize className="h-4 w-4" /> : <Focus className="h-4 w-4" />}</Button></Hint>
           <details className="relative">
             <summary className="flex h-8 cursor-pointer list-none items-center gap-2 rounded-md px-2.5 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"><Download className="h-4 w-4" />Exportar</summary>
@@ -139,8 +131,8 @@ export default function MarkmapStudio() {
         </div>
       )}
       {(message || files.error) && <div className="flex items-center justify-between border-b bg-primary/5 px-4 py-2 text-xs text-muted-foreground"><span>{files.error || message}</span><button onClick={() => { setMessage(null); files.clearError(); }}>Cerrar</button></div>}
-      <div className={`grid min-h-0 flex-1 ${focus || !editorVisible ? 'grid-cols-1' : 'grid-cols-1 grid-rows-[minmax(160px,0.8fr)_minmax(220px,1.2fr)] lg:grid-cols-[minmax(300px,0.85fr)_minmax(400px,1.15fr)] lg:grid-rows-1'}`}>
-        {!focus && editorVisible && (
+      <div className={`grid min-h-0 flex-1 ${focus ? 'grid-cols-1' : 'grid-cols-1 grid-rows-[minmax(160px,0.8fr)_minmax(220px,1.2fr)] lg:grid-cols-[minmax(300px,0.85fr)_minmax(400px,1.15fr)] lg:grid-rows-1'}`}>
+        {!focus && (
           <div className="flex min-h-0 flex-col border-r max-lg:border-b">
             <div className="flex items-center gap-1 overflow-x-auto border-b bg-muted/40 px-2 py-1.5">
               <span className="px-2 text-[11px] font-semibold text-muted-foreground">PLANTILLAS</span>

@@ -218,9 +218,9 @@ export function clearSearchHighlights(map?: DocumentTextMap | null): void {
   map?.root.querySelectorAll('[data-openhub-highlight-overlay="search"], [data-openhub-highlight-overlay="search-current"]').forEach((node) => node.remove());
 }
 
-export function applySearchHighlights(map: DocumentTextMap | null, query: string, activeIndex = -1, scroll = false): void {
+export function applySearchHighlights(map: DocumentTextMap | null, query: string, activeIndex = -1, scroll = false): number {
   clearSearchHighlights(map);
-  if (!map || !query.trim()) return;
+  if (!map || !query.trim()) return 0;
   const ranges: Range[] = [];
   const owners: HTMLElement[] = [];
   let remaining = 500;
@@ -243,6 +243,8 @@ export function applySearchHighlights(map: DocumentTextMap | null, query: string
     ranges.forEach((range, index) => paintOverlay(map.root, range, index === activeIndex ? 'search-current' : 'search'));
   }
   if (scroll && activeIndex >= 0 && ranges[activeIndex]) scrollRangeIntoView(ranges[activeIndex], owners[activeIndex]);
+  ranges.forEach((range) => range.detach());
+  return ranges.length;
 }
 
 export function scrollRangeIntoView(range: Range, element: HTMLElement): void {

@@ -195,7 +195,11 @@ export function useTts(segments: SpeechSegment[]): TtsController {
 
     fallbackContextRef.current = { segment, index, token, words };
     fallbackStartedAtRef.current = performance.now();
-    updatePosition({ segmentId: segment.id, segmentIndex: index, word: mapSpokenWordToSource(segment, words[0] ?? null) });
+    const firstPosition = { segmentId: segment.id, segmentIndex: index, word: mapSpokenWordToSource(segment, words[0] ?? null) };
+    updatePosition(firstPosition);
+    // Actualiza el contador de palabras en el mismo ciclo que el nuevo párrafo,
+    // sin esperar al efecto de calibración del reloj.
+    setWordsRemaining(countRemainingWords(source, firstPosition));
     setStatus('speaking');
     setProgress(index / source.length);
 

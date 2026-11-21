@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { createPortal } from 'react-dom';
 import { AudioLines, BrainCircuit, Clock3, FileText, FolderOpen, Maximize, Minimize, Moon, PanelLeft, PanelTopClose, Play, Search, Settings, SkipForward, Sun } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
@@ -18,13 +18,18 @@ interface Command {
 
 export function CommandPalette({ open, onClose, onToggleSidebar, onToggleHeader, onToggleFullscreen, fullscreen = false }: { open: boolean; onClose: () => void; onToggleSidebar: () => void; onToggleHeader: () => void; onToggleFullscreen: () => void; fullscreen?: boolean }) {
   const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const documentSearchSequenceRef = useRef(0);
   const setActiveTool = useAppStore((state) => state.setActiveTool);
   const theme = useAppStore((state) => state.theme);
   const setTheme = useAppStore((state) => state.setTheme);
   const recents = useAppStore((state) => state.recents);
+  const activeDocumentId = useAppStore((state) => state.activeDocumentId);
+  const markdownId = useAppStore((state) => state.markdownId);
+  const markdownName = useAppStore((state) => state.markdownName);
   const pomodoro = usePomodoro();
 
   const commands = useMemo<Command[]>(() => {
@@ -54,19 +59,48 @@ export function CommandPalette({ open, onClose, onToggleSidebar, onToggleHeader,
     ];
   }, [fullscreen, onToggleFullscreen, onToggleHeader, onToggleSidebar, pomodoro, recents, setActiveTool, setTheme, theme]);
 
-  // Búsqueda global: además de comandos, busca dentro del contenido de los
-  // documentos recientes (Markdown) y muestra el fragmento coincidente.
-  const contentMatches = useMemo(() => {
-    const needle = normalizeSearchText(query).trim();
-    if (needle.length < 2) return [] as Command[];
+  // Normaliza el contenido una sola vez por cambio de recientes y solo cuando
+  // la paleta está abierta; useDeferredValue evita bloquear la escritura.
+  const searchableRecents = useMemo(() => {
+    if (!open) return [] as Array<{ recent: (typeof recents)[number]; normalized: string }>;
+    return recents
+      .filter((recent) => recent.kind === 'markdown' && Boolean(recent.content))
+      .map((recent) => ({ recent, normalized: normalizeSearchText(recent.content ?? '') }));
+  }, [open, recents]);
+
+  const currentRecent = recents.find((recent) => recent.id === activeDocumentId);
+  const currentSearchDocumentId = activeDocumentId ?? markdownId;
+  const currentSearchDocumentName = currentRecent?.name
+    ?? (currentSearchDocumentId && currentSearchDocumentId === markdownId ? markdownName : null);
+  const currentDocumentSearch = useMemo<Command | null>(() => {
+    const needle = deferredQuery.trim();
+    if (!open || needle.length < 2 || !currentSearchDocumentId || !currentSearchDocumentName) return null;
+    return {
+      id: 'search-current-document',
+      title: `Buscar “${needle}” en ${currentSearchDocumentName}`,
+      detail: 'Documento actual · Enter busca y Ctrl+G avanza coincidencias',
+      keywords: 'buscar palabra texto actual documento',
+      icon: Search,
+      action: () => {
+        setActiveTool('viewer');
+        window.dispatchEvent(new CustomEvent('openhub:search-current-document', {
+          detail: { query: needle, documentId: currentSearchDocumentId, requestId: ++documentSearchSequenceRef.current },
+        }));
+      },
+    };
+  }, [currentSearchDocumentId, currentSearchDocumentName, deferredQuery, open, setActiveTool]);
+
+  // Búsqueda global: comandos y fragmentos de Markdown reciente.
+  const contentMatches = useMemo(() => { 
+    const needle = normalizeSearchText(deferredQuery).trim();
+    if (!open || needle.length < 2) return [] as Command[];
     const results: Command[] = [];
-    for (const recent of recents) {
-      if (recent.kind !== 'markdown' || !recent.content) continue;
-      const haystack = normalizeSearchText(recent.content);
-      const index = haystack.indexOf(needle);
+    for (const { recent, normalized } of searchableRecents) {
+      const index = normalized.indexOf(needle);
       if (index === -1) continue;
+      const rawContent = recent.content ?? '';
       const start = Math.max(0, index - 40);
-      const snippet = recent.content.slice(start, index + needle.length + 60).replace(/\s+/g, ' ').trim();
+      const snippet = rawContent.slice(start, index + needle.length + 60).replace(/\s+/g, ' ').trim();
       results.push({
         id: `content-${recent.id}`,
         title: recent.name,
@@ -77,8 +111,8 @@ export function CommandPalette({ open, onClose, onToggleSidebar, onToggleHeader,
       });
       if (results.length >= 6) break;
     }
-    return results;
-  }, [query, recents, setActiveTool]);
+    return currentDocumentSearch ? [currentDocumentSearch, ...results] : results;
+  }, [currentDocumentSearch, deferredQuery, open, searchableRecents, setActiveTool]);
 
   const filtered = useMemo(() => {
     const terms = normalizeSearchText(query).split(/\s+/).filter(Boolean);
@@ -87,8 +121,14 @@ export function CommandPalette({ open, onClose, onToggleSidebar, onToggleHeader,
       const haystack = normalizeSearchText(`${command.title} ${command.detail} ${command.keywords}`);
       return terms.every((term) => haystack.includes(term));
     });
-    return [...matched, ...contentMatches];
-  }, [commands, contentMatches, query]);
+    const commandActions = matched.filter((command) => !command.id.startsWith('recent-'));
+    const recentActions = matched.filter((command) => command.id.startsWith('recent-'));
+    const contentResults = contentMatches.filter((command) => command.id !== currentDocumentSearch?.id);
+    const results = [...commandActions, ...recentActions, ...contentResults];
+    // Keep actual command actions first; otherwise make searching the open
+    // document a one-Enter action, ahead of matching Recent reopen commands.
+    return currentDocumentSearch && commandActions.length === 0 ? [currentDocumentSearch, ...results] : results;
+  }, [commands, contentMatches, currentDocumentSearch, query]);
 
   useEffect(() => {
     if (!open) return;
@@ -132,7 +172,7 @@ export function CommandPalette({ open, onClose, onToggleSidebar, onToggleHeader,
               if (event.key === 'Tab') { event.preventDefault(); setSelected((index) => (index + (event.shiftKey ? -1 : 1) + filtered.length) % Math.max(1, filtered.length)); }
             }}
             className="h-14 border-0 bg-transparent text-base shadow-none focus-visible:ring-0"
-            placeholder="Busca herramientas, comandos o documentos…"
+            placeholder="Busca comandos, documentos o palabras en el documento abierto…"
             aria-label="Buscar comandos"
             aria-controls="command-results"
             aria-activedescendant={filtered[selected] ? `command-option-${selected}` : undefined}

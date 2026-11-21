@@ -100,7 +100,7 @@ export default function SettingsView() {
             <SettingRow title="Desplazamiento durante lectura" description="Centra suavemente la palabra que está sonando."><Switch checked={autoScroll} onCheckedChange={setAutoScroll} label="Auto-scroll TTS" /></SettingRow>
           </SettingsCard>
 
-          <SettingsCard title="Temas" description="Diseños completos estilo Apple: cristal esmerilado, tipografía SF y barra de lectura flotante. Se aplican al instante y se guardan en este equipo.">
+          <SettingsCard title="Temas" description="Diseños completos estilo Apple con cristal esmerilado y tipografía SF. En Apple Oscuro puedes arrastrar la barra de lectura y acoplarla verticalmente a un lateral; la posición se guarda en este equipo.">
             <div className="grid gap-3 sm:grid-cols-2">
               {APPLE_THEME_OPTIONS.map((option) => (
                 <button
@@ -236,7 +236,7 @@ const KEYBINDING_ACTIONS: Array<{ id: string; label: string }> = [
 
 const APPLE_THEME_OPTIONS: Array<{ id: Theme; label: string; description: string }> = [
   { id: 'apple-light', label: 'Apple Claro', description: 'Cristal esmerilado, documento limpio y barra de lectura flotante en azul Apple.' },
-  { id: 'apple-dark', label: 'Apple Oscuro', description: 'El mismo diseño en modo oscuro macOS, con acentos azules suaves sobre carbón.' },
+  { id: 'apple-dark', label: 'Apple Oscuro', description: 'El mismo diseño en modo oscuro macOS, con acentos azules suaves sobre carbón y barra de lectura movible y vertical en los laterales.' },
   { id: 'apple-outline', label: 'Apple con Índice', description: 'Tema claro con el panel de índice del documento abierto a la derecha.' },
   { id: 'apple-focus', label: 'Apple Foco', description: 'Sin barra lateral: solo el documento centrado y una barra flotante mínima.' },
 ];

@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
-import 'katex/dist/katex.min.css';
 import './index.css';
 import App from './App';
 import { PomodoroProvider } from '@/hooks/usePomodoro';

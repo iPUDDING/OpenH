@@ -1,7 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { Bookmark as BookmarkIcon, BookmarkPlus, Check, Columns2, Download, FileText, FolderOpen, ListTree, Loader2, Minus, Palette, PanelTop, Pencil, Plus, Printer, StickyNote, Trash2, UploadCloud, X } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReaderToolbar } from './ReaderToolbar';
 import { ReaderContextMenu } from './ReaderContextMenu';
 import { DocumentOutline } from './DocumentOutline';
@@ -19,9 +18,10 @@ import { applyMathSpeech } from '@/lib/mathSpeech';
 import { applyDashSpeech } from '@/lib/dashSpeech';
 import { selectedDocumentText } from '@/lib/selection';
 import { basename } from '@/lib/utils';
-import { segmentIndexAtPoint, type DocumentTextMap } from '@/lib/domTextMap';
+import { applySearchHighlights, clearSearchHighlights, segmentIndexAtPoint, type DocumentTextMap } from '@/lib/domTextMap';
 import type { Bookmark, DocNote, OpenedDocument, PaperTheme, RecentDocument, SpeechSegment } from '@/types';
 
+const MarkdownRenderer = lazy(() => import('./MarkdownRenderer').then((module) => ({ default: module.MarkdownRenderer })));
 const PdfRenderer = lazy(() => import('./PdfRenderer').then((module) => ({ default: module.PdfRenderer })));
 const OfficeRenderer = lazy(() => import('./OfficeRenderer').then((module) => ({ default: module.OfficeRenderer })));
 
@@ -54,7 +54,6 @@ export default function DocumentViewer() {
   const theme = useAppStore((state) => state.theme);
   const paperTheme = useAppStore((state) => state.paperTheme);
   const setPaperTheme = useAppStore((state) => state.setPaperTheme);
-  const readingPositions = useAppStore((state) => state.readingPositions);
   const setReadingPosition = useAppStore((state) => state.setReadingPosition);
   const bookmarks = useAppStore((state) => state.bookmarks);
   const addBookmark = useAppStore((state) => state.addBookmark);
@@ -84,6 +83,8 @@ export default function DocumentViewer() {
   const [pdfPage, setPdfPage] = useState(1);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; segmentIndex: number } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [documentSearchRequest, setDocumentSearchRequest] = useState<{ query: string; documentId: string; requestId: number; activeIndex: number } | null>(null);
+  const [documentSearchCount, setDocumentSearchCount] = useState(0);
   const [outlineOpen, setOutlineOpen] = useState(() => theme === 'apple-outline');
   // El tema Outline abre el índice al activarse; el tema Foco lo cierra.
   useEffect(() => {
@@ -91,7 +92,6 @@ export default function DocumentViewer() {
     else if (theme === 'apple-focus') setOutlineOpen(false);
   }, [theme]);
   const [selectionText, setSelectionText] = useState('');
-  const [progress, setProgress] = useState(0);
   const [notesOpen, setNotesOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
   const [renamingHeader, setRenamingHeader] = useState(false);
@@ -104,6 +104,9 @@ export default function DocumentViewer() {
   const headerRenameCancelledRef = useRef(false);
   const renamingHeaderRef = useRef(false);
   const zoomRef = useRef(viewerZoom);
+  const progressValueRef = useRef(0);
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  const progressFillRef = useRef<HTMLSpanElement>(null);
   zoomRef.current = viewerZoom;
 
   const headings = useMemo(() => {
@@ -129,6 +132,8 @@ export default function DocumentViewer() {
   const loadDocument = useCallback((document: OpenedDocument) => {
     tts.stop();
     setNotice(null);
+    setDocumentSearchRequest(null);
+    setDocumentSearchCount(0);
     renamingHeaderRef.current = false;
     setRenamingHeader(false);
     setSelectionText('');
@@ -177,6 +182,13 @@ export default function DocumentViewer() {
   useEffect(() => {
     const onOpen = () => { setActiveTool('viewer'); void openDialog(); };
     const onRecent = (event: Event) => void openRecent((event as CustomEvent<RecentDocument>).detail);
+    const onSearchCurrentDocument = (event: Event) => {
+      const detail = (event as CustomEvent<{ query?: string; documentId?: string; requestId?: number }>).detail;
+      const query = detail?.query?.trim();
+      if (!query || !detail.documentId || detail.documentId !== current?.id) return;
+      setDocumentSearchRequest({ query, documentId: detail.documentId, requestId: detail.requestId ?? Date.now(), activeIndex: 0 });
+      setActiveTool('viewer');
+    };
     const onNewDocument = (event: Event) => {
       const requestedName = (event as CustomEvent<{ name?: string }>).detail?.name?.trim();
       const name = requestedName || 'Texto sin título.md';
@@ -196,15 +208,17 @@ export default function DocumentViewer() {
     };
     window.addEventListener('openhub:open', onOpen);
     window.addEventListener('openhub:recent', onRecent);
+    window.addEventListener('openhub:search-current-document', onSearchCurrentDocument);
     window.addEventListener('openhub:new-document', onNewDocument);
     window.addEventListener('openhub:document-renamed', onRenamed);
     return () => {
       window.removeEventListener('openhub:open', onOpen);
       window.removeEventListener('openhub:recent', onRecent);
+      window.removeEventListener('openhub:search-current-document', onSearchCurrentDocument);
       window.removeEventListener('openhub:new-document', onNewDocument);
       window.removeEventListener('openhub:document-renamed', onRenamed);
     };
-  }, [loadDocument, openDialog, openRecent, setActiveTool, setMode]);
+  }, [current?.id, loadDocument, openDialog, openRecent, setActiveTool, setMode]);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -261,15 +275,16 @@ export default function DocumentViewer() {
 
   const addCurrentBookmark = useCallback(() => {
     if (!current) return;
-    const percent = Math.round(progress * 100);
+    const position = progressValueRef.current;
+    const percent = Math.round(position * 100);
     addBookmark(current.id, {
       id: globalThis.crypto?.randomUUID?.() ?? `bm-${Date.now()}-${Math.random()}`,
       label: `Marcador · ${percent}%`,
-      position: progress,
+      position,
       createdAt: Date.now(),
     });
     setNotice(`Marcador guardado en el ${percent}% del documento.`);
-  }, [addBookmark, current, progress]);
+  }, [addBookmark, current]);
 
   const goToBookmark = useCallback((position: number) => {
     const scroller = previewScrollRef.current;
@@ -409,6 +424,31 @@ export default function DocumentViewer() {
   const handleTextMap = useCallback((map: DocumentTextMap | null) => setTextMap(map), []);
   const handlePdfSegments = useCallback((next: SpeechSegment[]) => setPdfSegments(next), []);
 
+  useEffect(() => {
+    if (!documentSearchRequest || documentSearchRequest.documentId !== current?.id || current.kind === 'pdf' || !textMap) return;
+    const count = applySearchHighlights(textMap, documentSearchRequest.query, documentSearchRequest.activeIndex, true);
+    setDocumentSearchCount(count);
+    setNotice(count
+      ? `${count}${count === 500 ? '+' : ''} ${count === 1 ? 'coincidencia' : 'coincidencias'} de “${documentSearchRequest.query}”. Ctrl+G: siguiente · Ctrl+Mayús+G: anterior.`
+      : `No se encontró “${documentSearchRequest.query}” en este documento.`);
+    return () => clearSearchHighlights(textMap);
+  }, [current?.id, current?.kind, documentSearchRequest, textMap]);
+
+  useEffect(() => {
+    if (!documentSearchRequest || documentSearchRequest.documentId !== current?.id || current.kind === 'pdf') return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLocaleLowerCase() !== 'g' || !documentSearchCount) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.matches('input, textarea, select, [contenteditable="true"]')) return;
+      event.preventDefault();
+      setDocumentSearchRequest((request) => request
+        ? { ...request, activeIndex: (request.activeIndex + (event.shiftKey ? -1 : 1) + documentSearchCount) % documentSearchCount }
+        : request);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [current?.id, current?.kind, documentSearchCount, documentSearchRequest]);
+
   // Progreso de lectura + persistencia de posición (con debounce).
   const positionSaveRef = useRef<number | null>(null);
   const currentIdRef = useRef<string | null>(null);
@@ -419,7 +459,9 @@ export default function DocumentViewer() {
     const onScroll = () => {
       const max = scroller.scrollHeight - scroller.clientHeight;
       const ratio = max > 0 ? scroller.scrollTop / max : 0;
-      setProgress(Math.round(ratio * 1000) / 1000);
+      progressValueRef.current = ratio;
+      if (progressFillRef.current) progressFillRef.current.style.transform = `scaleX(${ratio})`;
+      progressBarRef.current?.setAttribute('aria-valuenow', String(Math.round(ratio * 100)));
       const id = currentIdRef.current;
       if (!id) return;
       if (positionSaveRef.current) window.clearTimeout(positionSaveRef.current);
@@ -436,7 +478,7 @@ export default function DocumentViewer() {
   // Restaurar la posición guardada al abrir un documento.
   useEffect(() => {
     if (!current?.id) return;
-    const saved = readingPositions[current.id];
+    const saved = useAppStore.getState().readingPositions[current.id];
     const scroller = previewScrollRef.current;
     if (saved === undefined || !scroller) return;
     const restore = () => {
@@ -613,8 +655,8 @@ export default function DocumentViewer() {
       )}
 
       {current && (
-        <div className="reading-progress" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100} aria-label="Progreso de lectura">
-          <span style={{ width: `${Math.round(progress * 100)}%` }} />
+        <div ref={progressBarRef} className="reading-progress" role="progressbar" aria-valuenow={Math.round(progressValueRef.current * 100)} aria-valuemin={0} aria-valuemax={100} aria-label="Progreso de lectura">
+          <span ref={progressFillRef} style={{ transform: 'scaleX(0)' }} />
         </div>
       )}
 
@@ -656,7 +698,9 @@ export default function DocumentViewer() {
               <div className="flex min-h-0 bg-card">
                 {!outlineOnRight && outlineOpen && headings.length > 0 && <DocumentOutline headings={headings} />}
                 <div ref={previewScrollRef} className={`${paperTheme !== 'white' ? `paper-${paperTheme}` : ''} ${appleTheme ? 'min-h-0 flex-1 overflow-auto pb-28' : 'min-h-0 flex-1 overflow-auto'}`}>
-                  <MarkdownRenderer content={markdown} documentPath={current.path} position={tts.position} autoScroll={autoScroll} onTextMap={handleTextMap} />
+                  <Suspense fallback={<div className="grid min-h-[40vh] place-items-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /><span className="sr-only">Cargando vista previa Markdown</span></div>}>
+                    <MarkdownRenderer content={markdown} documentPath={current.path} position={tts.position} autoScroll={autoScroll} onTextMap={handleTextMap} />
+                  </Suspense>
                 </div>
                 {outlineOnRight && outlineOpen && headings.length > 0 && <DocumentOutline headings={headings} />}
                 {notesOpen && current && (
@@ -692,7 +736,7 @@ export default function DocumentViewer() {
           ) : current.data ? (
             <div onContextMenu={onPdfContextMenu} className="flex min-h-0 flex-1 flex-col">
               <Suspense fallback={<div className="grid flex-1 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /><span className="sr-only">Cargando PDF.js</span></div>}>
-                <PdfRenderer data={current.data} position={tts.position} autoScroll={autoScroll} onSegmentsChange={handlePdfSegments} onPageChange={setPdfPage} />
+                <PdfRenderer data={current.data} position={tts.position} autoScroll={autoScroll} onSegmentsChange={handlePdfSegments} onPageChange={setPdfPage} searchRequest={documentSearchRequest?.documentId === current.id ? documentSearchRequest : null} />
               </Suspense>
             </div>
           ) : (

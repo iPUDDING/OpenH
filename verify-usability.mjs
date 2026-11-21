@@ -170,6 +170,26 @@ checks.push('Tema Apple Oscuro: data-theme y clase dark aplicadas');
 await page.getByRole('button', { name: /Documentos/ }).first().click();
 await page.waitForTimeout(400);
 await page.screenshot({ path: `${output}28-tema-apple-oscuro.png`, animations: 'disabled' });
+const toolbar = page.locator('.reader-toolbar[data-draggable="true"]');
+const dragHandle = page.getByRole('button', { name: 'Mover barra de lectura' });
+const toolbarBounds = await page.locator('section[aria-label="Visor de documentos"]').boundingBox();
+const handleBounds = await dragHandle.boundingBox();
+assert.ok(toolbarBounds && handleBounds);
+await page.mouse.move(handleBounds.x + handleBounds.width / 2, handleBounds.y + handleBounds.height / 2);
+await page.mouse.down();
+await page.mouse.move(toolbarBounds.x + 20, toolbarBounds.y + toolbarBounds.height / 2, { steps: 8 });
+await page.mouse.up();
+await page.waitForFunction(() => {
+  const bar = document.querySelector('.reader-toolbar[data-draggable="true"]');
+  return bar?.getAttribute('data-dock') === 'left' && bar.getAttribute('data-orientation') === 'vertical';
+});
+assert.equal(await toolbar.getAttribute('data-orientation'), 'vertical');
+assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('openhub:reader-toolbar-position:v1') ?? '{}').dock), 'left');
+await page.screenshot({ path: `${output}34-barra-lectura-vertical.png`, animations: 'disabled' });
+await dragHandle.focus();
+await page.keyboard.press('ArrowDown');
+await page.waitForFunction(() => document.querySelector('.reader-toolbar[data-draggable="true"]')?.getAttribute('data-dock') === 'bottom');
+checks.push('En Apple Oscuro se puede arrastrar la barra a un lateral, pasa a vertical y su posición queda restaurable');
 
 await page.getByRole('button', { name: /Ajustes/ }).first().click();
 await page.getByRole('button', { name: /Apple con Índice/ }).click();

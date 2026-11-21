@@ -1,4 +1,4 @@
-# Informe de verificación — OpenHub 1.4.0
+# Informe de verificación — OpenHub 1.4.4
 
 **Fecha:** 11 de noviembre de 2026.
 
@@ -7,21 +7,32 @@
 | Comprobación | Resultado |
 |---|---|
 | `npm run typecheck` | Correcto, sin errores TypeScript. |
-| `npm test` | 14 archivos; **70/70 pruebas unitarias** superadas (incluye parsers OOXML: XML, DOCX, PPTX y XLSX). |
+| `npm test` | 14 archivos; **72/72 pruebas unitarias** superadas (incluye parsers OOXML: XML, DOCX, PPTX y XLSX). |
 | `npm run build` | Build Vite de producción correcto; **2430 módulos** transformados (chunk `office` diferido con JSZip). |
 | `npm audit --omit=dev --audit-level=low` | **0 vulnerabilidades** en dependencias de producción. |
-| `node verify-improvements.mjs` | **7 comprobaciones** funcionales superadas; **`errors: []`**. |
-| `node verify-usability.mjs` | **14 comprobaciones** de usabilidad superadas; **`errors: []`**. |
+| `node verify-improvements.mjs` | **11 comprobaciones** funcionales superadas, incluida búsqueda en el documento abierto desde `Ctrl+K` en Markdown y PDF; **`errors: []`**. |
+| `node verify-usability.mjs` | **21 comprobaciones** de usabilidad superadas, incluida barra de lectura arrastrable y vertical en Apple Oscuro; **`errors: []`**. |
 | `node verify-updater.mjs` | **8 comprobaciones** del actualizador superadas; **`errors: []`**. |
 | `node verify-pomodoro.mjs` | **6 comprobaciones** de apilamiento, clics y alarmas superadas; **`errors: []`**. |
 | `node verify-navigation.mjs` | **10 comprobaciones** de identidad, Recientes y pantalla completa (`F11` global) superadas; **`errors: []`**. |
-| `node verify-viewer-features.mjs` | **20 comprobaciones** de zoom con scroll, renombrado, subrayado de títulos/subtítulos, atajo `Espacio`, tiempo restante, fórmulas LaTeX, guiones, menú contextual de lectura y visor DOCX/PPTX/XLSX superadas; **`errors: []`**. |
+| `node verify-viewer-features.mjs` | **25 comprobaciones** de zoom con scroll, renombrado, subrayado de títulos/subtítulos, atajo `Espacio`, tiempo restante, fórmulas LaTeX, guiones, menú contextual de lectura y visor DOCX/PPTX/XLSX superadas; **`errors: []`**. |
 
-Total de navegador: **76/76 comprobaciones** sobre el frontend de producción servido en el puerto 1420 mediante Chromium/Playwright. No se modifica la interfaz distribuida para aparentar resultados.
+Total de navegador: **81/81 comprobaciones** sobre el frontend de producción servido en el puerto 1420 mediante Chromium/Playwright. No se modifica la interfaz distribuida para aparentar resultados.
+
+## Rendimiento (1.4.1)
+
+El parser Markdown/KaTeX y sus estilos ahora se cargan bajo demanda al mostrar una vista previa. El chunk inicial de la aplicación pasó de 766,36 KB (235,89 KB gzip) a 265,68 KB (85,34 KB gzip); la hoja CSS inicial de 73,35 KB (17,44 KB gzip) pasó a 43,26 KB (9,21 KB gzip). La barra de progreso actualiza su transform/ARIA directamente durante el scroll, evitando renders del visor por cada evento; la búsqueda de contenido no normaliza documentos mientras la paleta está cerrada y reutiliza el texto normalizado durante la sesión de búsqueda. Detalle y límites en [RENDIMIENTO-1.4.1.md](RENDIMIENTO-1.4.1.md).
+
+## Búsqueda en el documento abierto desde la paleta
+
+`verify-improvements.mjs` escribe un término único en `Ctrl+K`, selecciona “Buscar … en [documento actual]” y verifica que el visor salta a la coincidencia y la resalta mediante CSS Custom Highlight API o el fallback local. En documentos DOM (Markdown/TXT/Office), `Ctrl+G` avanza y `Ctrl+Mayús+G` retrocede; en PDF la solicitud de la paleta usa el buscador PDF existente, incluidos el conteo, el resaltado y la navegación de página. No reemplaza las acciones de comandos ni la búsqueda global en Recientes. Captura real de Chromium: `docs/screenshots/mejoras/33-busqueda-documento-paleta.png`.
 
 ## E2E general
 
-1. Abre `Ctrl+K`, busca “mapas” y ejecuta el comando.
+En Mapas mentales, el botón “Ocultar editor Markdown” amplía el lienzo sin cerrar el mapa; “Mostrar editor Markdown” restaura el panel y el texto.
+
+
+1. Abre `Ctrl+K`, busca texto dentro de un documento reciente y comprueba el fragmento; después busca “mapas” y ejecuta el comando.
 2. Comprueba un índice Markdown de cuatro encabezados.
 3. Busca “Implementación” en Markmap y comprueba el nodo activo.
 4. Crea una regla “Kubernetes” → “ku ber ne tes” y verifica su persistencia.
@@ -60,14 +71,17 @@ notas de diapositiva y hojas múltiples) y verifica:
    de lectura flotante (`position: absolute`).
 2. “Apple Oscuro”: `data-theme="apple-dark"` con clase `dark`.
 3. “Apple con Índice”: el panel de índice del documento visible por defecto.
-4. “Apple Foco”: la barra lateral queda totalmente oculta (`w-0`).
-5. Volver a “Claro” restaura el aspecto clásico (sin `data-theme`).
+4. En “Apple Oscuro”, arrastrar el control de agarre al lateral izquierdo acopla la barra, la convierte en una columna vertical y guarda la posición local; `ArrowDown` la devuelve abajo.
+5. “Apple Foco”: la barra lateral queda totalmente oculta (`w-0`).
+6. Volver a “Claro” restaura el aspecto clásico (sin `data-theme`).
+
+Captura real de la barra acoplada en vertical: `docs/screenshots/mejoras/34-barra-lectura-vertical.png`.
 
 ## E2E de experiencia de lectura y productividad
 
 `verify-viewer-features.mjs` verifica las funciones de lectura:
 
-1. Barra de progreso de lectura visible (`role="progressbar"`).
+1. Barra de progreso visible y `aria-valuenow` actualizado al desplazarse (`role="progressbar"`).
 2. Estadísticas en el encabezado: palabras, caracteres y minutos estimados.
 3. Papel sepia aplicado al área del documento y persistente tras recargar.
 4. Marcador y nota guardados y visibles en el panel lateral.

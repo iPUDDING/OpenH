@@ -4,11 +4,16 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeKatex from 'rehype-katex';
+import type { PluggableList } from 'unified';
+import 'katex/dist/katex.min.css';
 import { applySpeechHighlights, buildDomTextMap, clearSpeechHighlights, type DocumentTextMap } from '@/lib/domTextMap';
 import { resolveMarkdownAsset } from '@/services/fileSystemService';
 import type { SpeechPosition } from '@/types';
 import { headingId } from '@/lib/headings';
 import { useAppStore } from '@/store/useAppStore';
+
+const remarkPlugins: PluggableList = [remarkGfm, remarkMath];
+const rehypePlugins: PluggableList = [[rehypeHighlight, { detect: false }], rehypeKatex];
 
 function MarkdownLink({ children, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) {
   return <a {...props} target="_blank" rel="noreferrer noopener">{children}</a>;
@@ -64,8 +69,8 @@ export function MarkdownRenderer({ content, documentPath, position, autoScroll, 
       style={{ fontSize: `${readerFontSize / 100}rem`, lineHeight: readerLineHeight, maxWidth: `${readerWidth}px`, zoom: viewerZoom }}
     >
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[[rehypeHighlight, { detect: false }], rehypeKatex]}
+        remarkPlugins={remarkPlugins}
+        rehypePlugins={rehypePlugins}
         components={components}
       >
         {content}

@@ -1,4 +1,4 @@
-# Informe de verificación — OpenHub 1.4.5
+# Informe de verificación — OpenHub 1.4.6
 
 **Fecha:** 11 de noviembre de 2026.
 
@@ -7,7 +7,7 @@
 | Comprobación | Resultado |
 |---|---|
 | `npm run typecheck` | Correcto, sin errores TypeScript. |
-| `npm test` | 14 archivos; **72/72 pruebas unitarias** superadas (incluye parsers OOXML: XML, DOCX, PPTX y XLSX). |
+| `npm test` | 15 archivos; **76/76 pruebas unitarias** superadas (incluye parsers OOXML: XML, DOCX, PPTX y XLSX). |
 | `npm run build` | Build Vite de producción correcto; **2430 módulos** transformados (chunk `office` diferido con JSZip). |
 | `npm audit --omit=dev --audit-level=low` | **0 vulnerabilidades** en dependencias de producción. |
 | `node verify-improvements.mjs` | **11 comprobaciones** funcionales superadas, incluida búsqueda en el documento abierto desde `Ctrl+K` en Markdown y PDF; **`errors: []`**. |
@@ -21,7 +21,7 @@ Total de navegador: **81/81 comprobaciones** sobre el frontend de producción se
 
 ## Rendimiento (1.4.1)
 
-El parser Markdown/KaTeX y sus estilos ahora se cargan bajo demanda al mostrar una vista previa. El chunk inicial de la aplicación pasó de 766,36 KB (235,89 KB gzip) a 265,68 KB (85,34 KB gzip); la hoja CSS inicial de 73,35 KB (17,44 KB gzip) pasó a 43,26 KB (9,21 KB gzip). La barra de progreso actualiza su transform/ARIA directamente durante el scroll, evitando renders del visor por cada evento; la búsqueda de contenido no normaliza documentos mientras la paleta está cerrada y reutiliza el texto normalizado durante la sesión de búsqueda. Detalle y límites en [RENDIMIENTO-1.4.1.md](RENDIMIENTO-1.4.1.md).
+El parser Markdown/KaTeX y sus estilos se cargan bajo demanda; la barra de progreso evita renders del visor durante el scroll y la búsqueda reutiliza el texto normalizado. El ciclo 1.4.6 añade indexación PDF concurrente acotada a cuatro páginas, cancelación del worker al cerrar o cambiar el PDF, y recorrido DOM sin arrays temporales por nodo. Detalles y pruebas: [RENDIMIENTO-1.4.1.md](RENDIMIENTO-1.4.1.md) y [RENDIMIENTO-1.4.6.md](RENDIMIENTO-1.4.6.md).
 
 ## Búsqueda en el documento abierto desde la paleta
 

@@ -9,6 +9,7 @@ import { Hint } from '@/components/ui/Tooltip';
 import { applySearchHighlights, applySpeechHighlights, buildDomTextMap, clearSearchHighlights, clearSpeechHighlights, type DocumentTextMap } from '@/lib/domTextMap';
 import { findMatches } from '@/lib/text';
 import { clamp } from '@/lib/utils';
+import { mapConcurrentOrdered } from '@/lib/concurrency';
 import type { SpeechPosition, SpeechSegment } from '@/types';
 
 type PdfEngine = typeof import('pdfjs-dist');
@@ -55,40 +56,55 @@ export function PdfRenderer({ data, position, autoScroll, onSegmentsChange, onPa
 
   useEffect(() => {
     let cancelled = false;
-    let loadedDocument: PDFDocumentProxy | null = null;
+    let loadingTask: ReturnType<PdfEngine['getDocument']> | null = null;
+    const abortController = new AbortController();
     setLoading(true);
     setError(null);
+    setEngine(null);
+    setTextMap(null);
     setPageNumber(1);
     setPageTexts([]);
+    setActiveMatch(0);
+    setQuery('');
     onSegmentsChange([]);
+
+    const destroyLoadingTask = () => {
+      const task = loadingTask;
+      loadingTask = null;
+      if (task) void task.destroy().catch(() => undefined);
+    };
 
     const load = async () => {
       try {
         const pdfjs = await import('pdfjs-dist');
+        if (cancelled || abortController.signal.aborted) return;
         const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+        if (cancelled || abortController.signal.aborted) return;
         pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-        const task = pdfjs.getDocument({ data: data.slice() });
-        const documentProxy = await task.promise;
-        loadedDocument = documentProxy;
-        if (cancelled) {
-          void documentProxy.destroy();
-          return;
-        }
+        loadingTask = pdfjs.getDocument({ data: data.slice() });
+        const documentProxy = await loadingTask.promise;
+        if (cancelled) return;
         setEngine({ pdfjs, document: documentProxy });
-        const texts: string[] = [];
-        for (let page = 1; page <= documentProxy.numPages; page += 1) {
-          const pdfPage = await documentProxy.getPage(page);
-          const content = await pdfPage.getTextContent();
-          texts.push(pageText(content));
-          pdfPage.cleanup();
-          if (cancelled) return;
-        }
+        const pageNumbers = Array.from({ length: documentProxy.numPages }, (_, index) => index + 1);
+        const texts = await mapConcurrentOrdered(pageNumbers, 4, async (pageNumber, _index, signal) => {
+          if (signal?.aborted) throw signal.reason ?? new Error('La lectura del PDF fue cancelada.');
+          const pdfPage = await documentProxy.getPage(pageNumber);
+          try {
+            if (signal?.aborted) throw signal.reason ?? new Error('La lectura del PDF fue cancelada.');
+            return pageText(await pdfPage.getTextContent());
+          } finally {
+            pdfPage.cleanup();
+          }
+        }, abortController.signal);
+        if (cancelled) return;
         setPageTexts(texts);
         onSegmentsChange(texts.flatMap((text, index) => text.trim() ? [{ id: `pdf-page-${index + 1}`, text }] : []));
         setLoading(false);
       } catch (loadError) {
         if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : 'No se pudo abrir el PDF.');
+          abortController.abort(loadError);
+          destroyLoadingTask();
+          setError(loadError instanceof Error ? loadError.message : 'No se pudo leer el índice de texto del PDF.');
           setLoading(false);
         }
       }
@@ -96,7 +112,8 @@ export function PdfRenderer({ data, position, autoScroll, onSegmentsChange, onPa
     void load();
     return () => {
       cancelled = true;
-      if (loadedDocument) void loadedDocument.destroy();
+      abortController.abort();
+      destroyLoadingTask();
     };
   }, [data, onSegmentsChange]);
 

@@ -39,14 +39,25 @@ function collectSegmentParts(element: HTMLElement): { nodes: TextNodeOffset[]; m
     text += value;
   };
   const walk = (parent: Node) => {
-    for (const child of Array.from(parent.childNodes)) {
+    // Iterar con referencias de hermanos evita crear un array temporal por cada
+    // nodo del árbol, lo que reduce presión de memoria en documentos extensos.
+    let child = parent.firstChild;
+    while (child) {
+      const nextChild = child.nextSibling;
       if (child.nodeType === Node.TEXT_NODE) {
         pushTextNode(child as Text);
+        child = nextChild;
         continue;
       }
-      if (child.nodeType !== Node.ELEMENT_NODE) continue;
+      if (child.nodeType !== Node.ELEMENT_NODE) {
+        child = nextChild;
+        continue;
+      }
       const el = child as HTMLElement;
-      if (el.closest('script, style, [data-no-tts]')) continue;
+      if (el.closest('script, style, [data-no-tts]')) {
+        child = nextChild;
+        continue;
+      }
       if (el.classList.contains('katex')) {
         const tex = el.querySelector('annotation[encoding="application/x-tex"]')?.textContent ?? '';
         const start = text.length;
@@ -63,10 +74,15 @@ function collectSegmentParts(element: HTMLElement): { nodes: TextNodeOffset[]; m
         }
         const glyphText = text.slice(start);
         mathRanges.push({ start, end: text.length, tex, spoken: tex ? latexToSpeech(tex) : glyphText });
+        child = nextChild;
         continue;
       }
-      if (el.tagName.toLowerCase() === 'math' || el.classList.contains('katex-mathml')) continue;
+      if (el.tagName.toLowerCase() === 'math' || el.classList.contains('katex-mathml')) {
+        child = nextChild;
+        continue;
+      }
       walk(el);
+      child = nextChild;
     }
   };
   walk(element);

@@ -5,14 +5,14 @@ Aplicación de escritorio **Windows 10/11**, que integra un visor Markdown/PDF, 
 ## Funcionalidades
 
 - **Documentos:** Markdown, TXT, PDF, DOCX (Word), PPTX (PowerPoint) y XLSX (Excel); diálogo nativo, drag & drop, historial, editor dividido, GFM, código y KaTeX; los documentos Office se convierten localmente a HTML semántico (encabezados, listas, tablas, imágenes, enlaces, notas y hojas) con el mismo subrayado TTS, zoom e índice; clic derecho sobre cualquier párrafo/sección para empezar la lectura TTS desde allí; cuatro temas completos estilo Apple (claro, oscuro, con índice y foco) en Ajustes → Temas, con cristal esmerilado y barra de lectura flotante que se puede arrastrar, acoplar a los laterales y usar en vertical en Apple Oscuro, manteniendo los controles Anterior/Siguiente/Detener en una fila horizontal; barra de progreso de lectura, posición recordada por documento, estadísticas (palabras/caracteres/minutos), papeles blanco/sepia/gris/negro, marcadores y notas por documento, exportación a HTML e impresión, paleta `Ctrl+K` para comandos y búsqueda en el documento abierto, con resaltado de todas las coincidencias, salto a la primera y navegación `Ctrl+G` / `Ctrl+Mayús+G`; búsqueda global de contenido reciente y atajos de teclado reasignables en Ajustes; zoom con `Ctrl + rueda` (y botones `− / % / +` o `Ctrl + 0`) en Markdown/TXT/editor, PDF y Office; cambio de nombre visible dentro de la app haciendo clic en la barra superior o desde Recientes sin alterar los archivos del disco.
-- **PDF local:** PDF.js y worker empaquetados; zoom con `Ctrl + rueda` o botones, ajuste, páginas, búsqueda global y capa de texto seleccionable.
+- **PDF local:** PDF.js y worker empaquetados; zoom con `Ctrl + rueda` o botones, ajuste, páginas, búsqueda global y capa de texto seleccionable. El índice de texto procesa hasta cuatro páginas en paralelo, en orden estable, y cancela tareas al cerrar/cambiar el archivo.
 - **Voz:** Web Speech API / voces SAPI disponibles en WebView2; velocidad, tono, volumen, atajo `Espacio` para pausar/reanudar la lectura activa sin interferir al escribir, lectura de selección, párrafos, progreso, tiempo restante en vivo `mm:ss` calibrado con la velocidad real de la voz (con duración total y palabras restantes), fórmulas LaTeX leídas en español natural (sin código fuente), guiones leídos como pausa/rango/compuesto sin saltarse, resaltado (incluidos títulos/subtítulos Markdown y enlaces) y auto-scroll.
 - **Mapas:** CodeMirror 6 + Markmap, zoom, pan, colapso, modo foco, control para ocultar/recuperar el editor Markdown, plantillas y exportación MD/SVG/HTML/PNG/PDF mediante impresión.
 - **Pomodoro compartido:** trabajo/descanso configurables, pausa, salto, reinicio, estadísticas y alarma local diferente al terminar enfoque o descanso. Panel flotante accesible sobre Visor, TTS y Mapas.
 - **Productividad:** pantalla completa nativa/web global con botón y `F11` (incluso con la barra superior oculta), creación de textos y apertura de archivos desde Recientes, paleta `Ctrl+K`, barra superior ocultable con `Ctrl+Shift+H`, índice Markdown, búsqueda PDF y búsqueda/centrado de temas Markmap.
 - **Lectura accesible:** tamaño, interlineado y ancho configurables; pronunciación TTS personalizada sin alterar el texto ni perder su resaltado.
 - **Respaldo local:** exportación/restauración JSON versionada y validada de preferencias, pronunciaciones y recientes.
-- **Rendimiento 1.4.1:** visor Markdown/KaTeX diferido, progreso de lectura sin renders por evento de scroll y búsqueda global con normalización reutilizada. [Mediciones y metodología](docs/RENDIMIENTO-1.4.1.md).
+- **Rendimiento 1.4.6:** visor Markdown/KaTeX diferido, extracción de texto PDF con concurrencia acotada y cancelable, mapeo DOM sin arrays temporales por nodo, progreso de lectura sin renders por evento de scroll y búsqueda global con normalización reutilizada. [Cambios y pruebas](docs/RENDIMIENTO-1.4.6.md).
 - **Actualizaciones firmadas:** aviso al iniciar, descarga con progreso, instalación con aceptación y reinicio mediante GitHub Releases. [Configuración](docs/ACTUALIZACIONES.md).
 - **Privacidad:** sin cuentas, analítica ni recursos remotos. El estado se conserva en `localStorage` de WebView2; únicamente el actualizador contacta GitHub Releases.
 
@@ -67,8 +67,8 @@ La verificación E2E opcional y reproducible de las nuevas funciones está docum
 Instaladores generados:
 
 ```text
-src-tauri/target/release/bundle/nsis/OpenHub_1.4.5_x64-setup.exe
-src-tauri/target/release/bundle/msi/OpenHub_1.4.5_x64_en-US.msi
+src-tauri/target/release/bundle/nsis/OpenHub_1.4.6_x64-setup.exe
+src-tauri/target/release/bundle/msi/OpenHub_1.4.6_x64_en-US.msi
 ```
 
 > Los nombres pueden variar según la arquitectura y el idioma del bundle.
@@ -80,7 +80,7 @@ src-tauri/target/release/bundle/msi/OpenHub_1.4.5_x64_en-US.msi
    ```powershell
    git init
    git add .
-   git commit -m "OpenHub 1.4.5"
+   git commit -m "OpenHub 1.4.6"
    git branch -M main
    git remote add origin https://github.com/USUARIO/REPOSITORIO.git
    git push -u origin main

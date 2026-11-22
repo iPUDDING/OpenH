@@ -184,12 +184,17 @@ await page.waitForFunction(() => {
   return bar?.getAttribute('data-dock') === 'left' && bar.getAttribute('data-orientation') === 'vertical';
 });
 assert.equal(await toolbar.getAttribute('data-orientation'), 'vertical');
+const transportControls = page.getByRole('group', { name: 'Controles de navegación de lectura' });
+assert.equal(await transportControls.evaluate((node) => getComputedStyle(node).flexDirection), 'row');
+const transportButtons = await transportControls.getByRole('button').evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().top));
+assert.equal(transportButtons.length, 3);
+assert.ok(transportButtons.every((top) => Math.abs(top - transportButtons[0]) < 2), 'Anterior, siguiente y detener deben quedar en una misma fila');
 assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('openhub:reader-toolbar-position:v1') ?? '{}').dock), 'left');
 await page.screenshot({ path: `${output}34-barra-lectura-vertical.png`, animations: 'disabled' });
 await dragHandle.focus();
 await page.keyboard.press('ArrowDown');
 await page.waitForFunction(() => document.querySelector('.reader-toolbar[data-draggable="true"]')?.getAttribute('data-dock') === 'bottom');
-checks.push('En Apple Oscuro se puede arrastrar la barra a un lateral, pasa a vertical y su posición queda restaurable');
+checks.push('Apple Oscuro: barra movible y vertical al costado, con Anterior/Siguiente/Detener alineados en horizontal y posición guardada');
 
 await page.getByRole('button', { name: /Ajustes/ }).first().click();
 await page.getByRole('button', { name: /Apple con Índice/ }).click();

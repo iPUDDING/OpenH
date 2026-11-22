@@ -171,9 +171,11 @@ export function ReaderToolbar({ controller, onReadSelection, showPomodoro = fals
         ) : (
           <Button size="sm" data-tts-control="true" onClick={() => controller.play()} disabled={!controller.supported}><Play className="h-4 w-4" />Leer</Button>
         )}
-        <Hint label="Párrafo anterior"><Button variant="ghost" size="icon-sm" onClick={controller.previous} disabled={!active} aria-label="Párrafo anterior"><SkipBack className="h-4 w-4" /></Button></Hint>
-        <Hint label="Párrafo siguiente"><Button variant="ghost" size="icon-sm" onClick={controller.next} disabled={!active} aria-label="Párrafo siguiente"><SkipForward className="h-4 w-4" /></Button></Hint>
-        <Hint label="Detener"><Button variant="ghost" size="icon-sm" onClick={controller.stop} disabled={!active && controller.status !== 'completed'} aria-label="Detener lectura"><Square className="h-4 w-4" /></Button></Hint>
+        <div role="group" aria-label="Controles de navegación de lectura" className="reader-toolbar-transport-controls">
+          <Hint label="Párrafo anterior"><Button variant="ghost" size="icon-sm" onClick={controller.previous} disabled={!active} aria-label="Párrafo anterior"><SkipBack className="h-4 w-4" /></Button></Hint>
+          <Hint label="Párrafo siguiente"><Button variant="ghost" size="icon-sm" onClick={controller.next} disabled={!active} aria-label="Párrafo siguiente"><SkipForward className="h-4 w-4" /></Button></Hint>
+          <Hint label="Detener"><Button variant="ghost" size="icon-sm" onClick={controller.stop} disabled={!active && controller.status !== 'completed'} aria-label="Detener lectura"><Square className="h-4 w-4" /></Button></Hint>
+        </div>
         <Hint label={selectionLength ? `Leer únicamente los ${selectionLength} caracteres seleccionados` : 'Primero selecciona texto en el documento; después pulsa este botón'}>
           <Button variant={selectionLength ? 'secondary' : 'ghost'} size="sm" data-tts-control="true" onMouseDown={(event) => event.preventDefault()} onClick={onReadSelection} disabled={!controller.supported} aria-label="Leer selección"><ScanText className="h-4 w-4" />Leer selección{selectionLength > 0 && <span className="rounded bg-background/70 px-1 text-[10px] tabular-nums">{selectionLength}</span>}</Button>
         </Hint>

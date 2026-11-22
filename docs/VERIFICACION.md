@@ -1,4 +1,4 @@
-# Informe de verificación — OpenHub 1.4.4
+# Informe de verificación — OpenHub 1.4.5
 
 **Fecha:** 11 de noviembre de 2026.
 
@@ -11,7 +11,7 @@
 | `npm run build` | Build Vite de producción correcto; **2430 módulos** transformados (chunk `office` diferido con JSZip). |
 | `npm audit --omit=dev --audit-level=low` | **0 vulnerabilidades** en dependencias de producción. |
 | `node verify-improvements.mjs` | **11 comprobaciones** funcionales superadas, incluida búsqueda en el documento abierto desde `Ctrl+K` en Markdown y PDF; **`errors: []`**. |
-| `node verify-usability.mjs` | **21 comprobaciones** de usabilidad superadas, incluida barra de lectura arrastrable y vertical en Apple Oscuro; **`errors: []`**. |
+| `node verify-usability.mjs` | **21 comprobaciones** de usabilidad superadas, incluida barra de lectura arrastrable y vertical en Apple Oscuro, con controles de transporte horizontales; **`errors: []`**. |
 | `node verify-updater.mjs` | **8 comprobaciones** del actualizador superadas; **`errors: []`**. |
 | `node verify-pomodoro.mjs` | **6 comprobaciones** de apilamiento, clics y alarmas superadas; **`errors: []`**. |
 | `node verify-navigation.mjs` | **10 comprobaciones** de identidad, Recientes y pantalla completa (`F11` global) superadas; **`errors: []`**. |
@@ -71,7 +71,7 @@ notas de diapositiva y hojas múltiples) y verifica:
    de lectura flotante (`position: absolute`).
 2. “Apple Oscuro”: `data-theme="apple-dark"` con clase `dark`.
 3. “Apple con Índice”: el panel de índice del documento visible por defecto.
-4. En “Apple Oscuro”, arrastrar el control de agarre al lateral izquierdo acopla la barra, la convierte en una columna vertical y guarda la posición local; `ArrowDown` la devuelve abajo.
+4. En “Apple Oscuro”, arrastrar el control de agarre al lateral izquierdo acopla la barra, la convierte en una columna vertical, mantiene Anterior/Siguiente/Detener en una sola fila horizontal y guarda la posición local; `ArrowDown` la devuelve abajo.
 5. “Apple Foco”: la barra lateral queda totalmente oculta (`w-0`).
 6. Volver a “Claro” restaura el aspecto clásico (sin `data-theme`).
 

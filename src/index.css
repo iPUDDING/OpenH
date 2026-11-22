@@ -241,6 +241,16 @@
   overflow: auto;
   padding: 0.65rem;
 }
+[data-theme^="apple"] .reader-toolbar-transport-controls {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.25rem;
+}
+[data-theme^="apple"] .reader-toolbar[data-draggable="true"][data-orientation="vertical"] .reader-toolbar-transport-controls {
+  width: 100%;
+  justify-content: space-evenly;
+}
 [data-theme^="apple"] .reader-toolbar[data-draggable="true"][data-orientation="vertical"] .reader-toolbar-content {
   flex-direction: column;
   flex-wrap: nowrap;
